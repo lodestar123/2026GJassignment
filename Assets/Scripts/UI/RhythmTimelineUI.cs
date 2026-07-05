@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 리듬 타임라인 — 가이드는 패턴 슬롯(0~1) 고정. playhead·탭 마커 = 판정 축(judged).
-/// input offset은 판정·playhead에만 반영(가이드는 움직이지 않음).
+/// 리듬 타임라인 — 가이드는 패턴 슬롯(0~1) 고정.
+/// playhead·탭 마커는 judged 축을 구간별 매핑(마지막 구간 가속)해 마디 끝에서 트랙 끝까지 도달.
 /// </summary>
 [DefaultExecutionOrder(200)]
 public class RhythmTimelineUI : MonoBehaviour
@@ -69,7 +69,14 @@ public class RhythmTimelineUI : MonoBehaviour
     int _markerSequence;
     bool _subscribed;
     bool _selectorSubscribed;
+    bool _offsetSubscribed;
+    bool _beatClockSubscribed;
     CommandType _lastGuideType = CommandType.None;
+    float[] _playheadKnotJudged = { 0f, 1f };
+    float[] _playheadKnotAnchor = { 0f, 1f };
+    float _playheadKnotDuration = -1f;
+    float _playheadKnotSpan = -1f;
+    CommandType _playheadKnotPattern = CommandType.None;
     Image _playheadImage;
     Color _playheadBaseColor = new(0.35f, 0.88f, 1f, 1f);
     float _playheadFlashUntil;
@@ -97,6 +104,8 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         TrySubscribe();
         TrySubscribeSelector();
+        TrySubscribeOffset();
+        TrySubscribeBeatClock();
         RefreshPatternGuides();
     }
 
@@ -104,6 +113,8 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         TrySubscribe();
         TrySubscribeSelector();
+        TrySubscribeOffset();
+        TrySubscribeBeatClock();
         RefreshPatternGuides();
     }
 
@@ -111,6 +122,8 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         TryUnsubscribe();
         TryUnsubscribeSelector();
+        TryUnsubscribeOffset();
+        TryUnsubscribeBeatClock();
         ClearAllMarkersImmediate();
         ClearGuides();
     }
@@ -119,6 +132,8 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         TryUnsubscribe();
         TryUnsubscribeSelector();
+        TryUnsubscribeOffset();
+        TryUnsubscribeBeatClock();
     }
 
     void Update()
@@ -128,6 +143,12 @@ public class RhythmTimelineUI : MonoBehaviour
 
         if (!_selectorSubscribed)
             TrySubscribeSelector();
+
+        if (!_offsetSubscribed)
+            TrySubscribeOffset();
+
+        if (!_beatClockSubscribed)
+            TrySubscribeBeatClock();
 
         UpdatePlayhead();
         UpdateMarkerFade();
@@ -259,6 +280,48 @@ public class RhythmTimelineUI : MonoBehaviour
         _selectorSubscribed = false;
     }
 
+    void TrySubscribeOffset()
+    {
+        var settings = RhythmInputSettings.Instance ?? FindAnyObjectByType<RhythmInputSettings>();
+        if (settings == null)
+            return;
+
+        settings.OnInputOffsetChanged -= OnInputOffsetChanged;
+        settings.OnInputOffsetChanged += OnInputOffsetChanged;
+        _offsetSubscribed = true;
+    }
+
+    void TryUnsubscribeOffset()
+    {
+        var settings = RhythmInputSettings.Instance ?? FindAnyObjectByType<RhythmInputSettings>();
+        if (settings != null)
+            settings.OnInputOffsetChanged -= OnInputOffsetChanged;
+
+        _offsetSubscribed = false;
+    }
+
+    void OnInputOffsetChanged(float _) => InvalidatePlayheadKnots();
+
+    void TrySubscribeBeatClock()
+    {
+        if (BeatClock.Instance == null)
+            return;
+
+        BeatClock.Instance.OnTimingChanged -= OnBeatTimingChanged;
+        BeatClock.Instance.OnTimingChanged += OnBeatTimingChanged;
+        _beatClockSubscribed = true;
+    }
+
+    void TryUnsubscribeBeatClock()
+    {
+        if (BeatClock.Instance != null)
+            BeatClock.Instance.OnTimingChanged -= OnBeatTimingChanged;
+
+        _beatClockSubscribed = false;
+    }
+
+    void OnBeatTimingChanged(float _) => InvalidatePlayheadKnots();
+
     void OnPatternSelectionChanged(CommandType type) => RefreshPatternGuides();
 
     void RefreshPatternGuides(bool force = false)
@@ -277,6 +340,7 @@ public class RhythmTimelineUI : MonoBehaviour
             return;
 
         _lastGuideType = type;
+        InvalidatePlayheadKnots();
         ClearGuides();
 
         if (guidesRoot == null || !RhythmPatternLibrary.TryGetByType(type, out var pattern))
@@ -481,17 +545,128 @@ public class RhythmTimelineUI : MonoBehaviour
             BeatClock.Instance.MeasureStartTime);
     }
 
+    static float GetChartSpan(float measureDuration)
+    {
+        float offset = RhythmInputSettings.GetAppliedOffsetSeconds();
+        return Mathf.Max(measureDuration - offset, measureDuration * 0.25f);
+    }
+
+    void InvalidatePlayheadKnots()
+    {
+        _playheadKnotDuration = -1f;
+        _playheadKnotSpan = -1f;
+        _playheadKnotPattern = CommandType.None;
+    }
+
+    void EnsurePlayheadKnots(float duration)
+    {
+        float span = GetChartSpan(duration);
+        var pattern = _lastGuideType != CommandType.None
+            ? _lastGuideType
+            : RhythmPatternSelector.Instance != null
+                ? RhythmPatternSelector.Instance.Selected
+                : CommandType.GoldPulse;
+
+        if (pattern == CommandType.None)
+            pattern = CommandType.GoldPulse;
+
+        if (_playheadKnotPattern == pattern
+            && Mathf.Approximately(_playheadKnotDuration, duration)
+            && Mathf.Approximately(_playheadKnotSpan, span))
+            return;
+
+        RebuildPlayheadKnots(duration, span, pattern);
+        _playheadKnotDuration = duration;
+        _playheadKnotSpan = span;
+        _playheadKnotPattern = pattern;
+    }
+
+    void RebuildPlayheadKnots(float duration, float span, CommandType patternType)
+    {
+        var judged = new List<float> { 0f };
+        var anchor = new List<float> { 0f };
+
+        if (RhythmPatternLibrary.TryGetByType(patternType, out var pattern))
+        {
+            foreach (float fraction in pattern.HitFractions)
+            {
+                if (fraction <= 0.0001f)
+                    continue;
+
+                judged.Add(fraction * duration);
+                anchor.Add(fraction);
+            }
+        }
+
+        judged.Add(span);
+        anchor.Add(1f);
+
+        SortKnotPairs(judged, anchor);
+        _playheadKnotJudged = judged.ToArray();
+        _playheadKnotAnchor = anchor.ToArray();
+    }
+
+    static void SortKnotPairs(List<float> judged, List<float> anchor)
+    {
+        for (int i = 0; i < judged.Count - 1; i++)
+        {
+            for (int j = i + 1; j < judged.Count; j++)
+            {
+                if (judged[j] >= judged[i])
+                    continue;
+
+                (judged[i], judged[j]) = (judged[j], judged[i]);
+                (anchor[i], anchor[j]) = (anchor[j], anchor[i]);
+            }
+        }
+
+        for (int i = judged.Count - 1; i > 0; i--)
+        {
+            if (Mathf.Abs(judged[i] - judged[i - 1]) > 0.0001f)
+                continue;
+
+            judged.RemoveAt(i);
+            anchor.RemoveAt(i);
+        }
+    }
+
+    float MapJudgedToAnchor(float chartElapsed, float duration)
+    {
+        EnsurePlayheadKnots(duration);
+
+        if (_playheadKnotJudged.Length < 2)
+            return chartElapsed / GetChartSpan(duration);
+
+        for (int i = 0; i < _playheadKnotJudged.Length - 1; i++)
+        {
+            float t0 = _playheadKnotJudged[i];
+            float t1 = _playheadKnotJudged[i + 1];
+            if (chartElapsed > t1 + 0.000001f && i < _playheadKnotJudged.Length - 2)
+                continue;
+
+            if (t1 <= t0 + 0.000001f)
+                return _playheadKnotAnchor[i + 1];
+
+            float u = Mathf.Clamp01((chartElapsed - t0) / (t1 - t0));
+            u = u * u * (3f - 2f * u);
+            return Mathf.Lerp(_playheadKnotAnchor[i], _playheadKnotAnchor[i + 1], u);
+        }
+
+        return _playheadKnotAnchor[_playheadKnotAnchor.Length - 1];
+    }
+
     float ChartElapsedToAnchor(float chartElapsed, float duration)
     {
-        float earlyLateRef = markerEarlyLateReference * (duration / BeatClock.ReferenceMeasureDuration);
+        float span = GetChartSpan(duration);
+        float earlyLateRef = markerEarlyLateReference * (span / BeatClock.ReferenceMeasureDuration);
 
         if (chartElapsed < 0f)
             return -markerSideExtend * Mathf.Clamp01(-chartElapsed / earlyLateRef);
 
-        if (chartElapsed > duration)
-            return 1f + markerSideExtend * Mathf.Clamp01((chartElapsed - duration) / earlyLateRef);
+        if (chartElapsed > span)
+            return 1f + markerSideExtend * Mathf.Clamp01((chartElapsed - span) / earlyLateRef);
 
-        return chartElapsed / duration;
+        return MapJudgedToAnchor(chartElapsed, duration);
     }
 
     float GetPulsePeakScale(TapTimingQuality quality) => quality switch
