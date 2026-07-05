@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// 잠긴 배치 슬롯 호버 — 해금 비용 표시 (클릭은 기존과 동일).
 /// </summary>
-public class PlacementSlotTooltipUI : MonoBehaviour
+public class PlacementSlotTooltipUI : MonoBehaviour, IRuntimeSceneUi
 {
     public static PlacementSlotTooltipUI Instance { get; private set; }
 
@@ -21,20 +21,7 @@ public class PlacementSlotTooltipUI : MonoBehaviour
     Camera _camera;
     TowerPlacementCell _trackedCell;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsureInstance()
-    {
-        if (FindAnyObjectByType<PlacementSlotTooltipUI>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("PlacementSlotTooltipUI");
-        go.transform.SetParent(canvas.transform, false);
-        go.AddComponent<PlacementSlotTooltipUI>();
-    }
+    public void EnsureSceneHierarchy() => EnsureStructure();
 
     void Awake()
     {
@@ -45,7 +32,7 @@ public class PlacementSlotTooltipUI : MonoBehaviour
         }
 
         Instance = this;
-        EnsureStructure();
+        EnsureSceneHierarchy();
         Hide();
     }
 

@@ -71,15 +71,7 @@ public class JudgmentFlashUI : MonoBehaviour
 
     void OnFeverActivated()
     {
-        if (flashText == null)
-            return;
-
-        flashText.text = "<color=#FFB74D><size=120%>FEVER TIME!</size></color>\n<size=55%>DMG x1.5 | 6s</size>";
-        flashText.gameObject.SetActive(true);
-
-        if (_hideRoutine != null)
-            StopCoroutine(_hideRoutine);
-        _hideRoutine = StartCoroutine(HideAfter(displaySeconds));
+        // FeverBurstUI가 메인 연출 — 중복 팝업 생략.
     }
 
     void OnCommandResolved(CommandType type, JudgmentResult judgment)

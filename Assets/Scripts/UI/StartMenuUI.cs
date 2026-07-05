@@ -17,9 +17,6 @@ public class StartMenuUI : MonoBehaviour
     {
         Time.timeScale = 1f;
 
-        if (titleText != null)
-            titleText.text = "Beat Defender";
-
         if (startGameButton != null)
             startGameButton.onClick.AddListener(() => SceneManager.LoadScene(GameSettings.ActiveGameSceneName));
 

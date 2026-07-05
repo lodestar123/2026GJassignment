@@ -1,11 +1,10 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
 /// 판정·피버 — 화면 가장자리 짧은 flash (BeatPulseRail 대체).
 /// </summary>
-public class JudgmentEdgeFlashUI : MonoBehaviour
+public class JudgmentEdgeFlashUI : MonoBehaviour, IRuntimeSceneUi
 {
     public static JudgmentEdgeFlashUI Instance { get; private set; }
 
@@ -14,6 +13,7 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
     [SerializeField] float feverFlashSeconds = 0.55f;
     [SerializeField] float edgeThickness = 18f;
     [SerializeField] float perfectEdgeThickness = 26f;
+    [SerializeField] float feverEdgeThickness = 20f;
     [SerializeField] float fadeInPortion = 0.18f;
 
     Image _top;
@@ -30,39 +30,24 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
     static readonly Color PerfectColor = new(1f, 0.9f, 0.35f, 0.78f);
     static readonly Color GoodColor = new(0.65f, 0.93f, 0.65f, 0.48f);
     static readonly Color MissColor = new(0.94f, 0.33f, 0.31f, 0.52f);
-    static readonly Color FeverColor = new(1f, 0.55f, 0.12f, 0.38f);
+    static readonly Color FeverColor = new(1f, 0.62f, 0.12f, 0.4f);
+    static readonly Color FeverPulseColor = new(1f, 0.72f, 0.18f, 0.32f);
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsureOnGameplayScenes()
+    public void EnsureSceneHierarchy()
     {
-        var scene = SceneManager.GetActiveScene();
-        if (scene.name != SceneNames.Game && scene.name != SceneNames.Practice)
-            return;
-
-        RemoveLegacyBeatPulseRail();
-
-        if (FindAnyObjectByType<JudgmentEdgeFlashUI>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("JudgmentEdgeFlashUI");
-        go.transform.SetParent(canvas.transform, false);
-        go.transform.SetAsFirstSibling();
-        go.AddComponent<JudgmentEdgeFlashUI>();
+        ResolveRefs();
+        if (_top == null)
+            BuildEdges();
+        ApplyEdgeColor(Color.clear);
+        ApplyEdgeThickness(edgeThickness);
     }
 
-    static void RemoveLegacyBeatPulseRail()
+    void ResolveRefs()
     {
-        var rail = GameObject.Find("BeatPulseRail");
-        if (rail != null)
-            Object.Destroy(rail);
-
-        var boost = GameObject.Find("BoostBorderOverlay");
-        if (boost != null)
-            Object.Destroy(boost);
+        _top ??= transform.Find("EdgeTop")?.GetComponent<Image>();
+        _bottom ??= transform.Find("EdgeBottom")?.GetComponent<Image>();
+        _left ??= transform.Find("EdgeLeft")?.GetComponent<Image>();
+        _right ??= transform.Find("EdgeRight")?.GetComponent<Image>();
     }
 
     void Awake()
@@ -74,8 +59,7 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
         }
 
         Instance = this;
-        BuildEdges();
-        ApplyEdgeColor(Color.clear);
+        EnsureSceneHierarchy();
     }
 
     void OnDestroy()
@@ -126,7 +110,13 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
 
     void BuildEdges()
     {
-        var rt = gameObject.AddComponent<RectTransform>();
+        if (_top != null)
+            return;
+
+        if (transform is not RectTransform)
+            gameObject.AddComponent<RectTransform>();
+
+        var rt = transform as RectTransform;
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero;
@@ -175,7 +165,7 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
 
     void OnFeverActivated()
     {
-        TriggerFlash(FeverColor, feverFlashSeconds);
+        TriggerFlash(FeverColor, feverFlashSeconds, feverEdgeThickness);
     }
 
     void TriggerFlash(Color color, float duration, float thicknessOverride = -1f)
@@ -223,9 +213,10 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
         if (FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive)
         {
             float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3.2f);
-            var c = FeverColor;
-            c.a = Mathf.Lerp(0.18f, 0.36f, pulse);
+            var c = FeverPulseColor;
+            c.a = Mathf.Lerp(0.14f, 0.3f, pulse);
             ApplyEdgeColor(c);
+            ApplyEdgeThickness(Mathf.Lerp(feverEdgeThickness * 0.8f, feverEdgeThickness, pulse));
             return;
         }
 

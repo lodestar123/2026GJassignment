@@ -375,7 +375,7 @@ public class GameHudUI : MonoBehaviour
             goldCardBg.color = CardBgNormal;
 
         if (secondaryLine != null)
-            secondaryLine.text = BuildSecondaryLine(gold);
+            secondaryLine.text = BuildRhythmSecondaryLine(_cooldowns);
     }
 
     void RefreshLegacy(int gold)
@@ -396,7 +396,7 @@ public class GameHudUI : MonoBehaviour
                 ? $"{bpm:0} BPM <size=85%>(x{tempoScale:0.##})</size>"
                 : $"{bpm:0} BPM";
 
-        float strikeCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.OverloadStrike) : 0f;
+        float overloadCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.OverloadStrike) : 0f;
         float chainCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.ChainZap) : 0f;
 
         int hp = _core != null ? _core.CurrentHp : BaseHealth.DefaultMaxHp;
@@ -419,49 +419,35 @@ public class GameHudUI : MonoBehaviour
 
         statusLine.text =
             $"{timerLine}{Sep}{hpLine}{Sep}{goldLine}{Sep}{bpmLine}{Sep}" +
-            $"Strike {FormatCd(strikeCd)}{Sep}Chain {FormatCd(chainCd)}";
+            $"Overload {FormatCd(overloadCd)}{Sep}Chain {FormatCd(chainCd)}";
 
         if (detailLine != null)
-        {
-            int towers = TowerPlacer.Instance != null ? TowerPlacer.Instance.TowerCount : 0;
-            int perfect = _stats != null ? _stats.PerfectCount : 0;
-            int good = _stats != null ? _stats.GoodCount : 0;
-            int miss = _stats != null ? _stats.MissCount : 0;
-
-            detailLine.text =
-                $"Judge P{perfect} G{good} M{miss}{Sep}Towers {towers}{Sep}" +
-                $"Place: {(TowerSelection.IsArmed ? "ON" : "OFF")}";
-        }
+            detailLine.text = string.Empty;
     }
 
-    string BuildSecondaryLine(int gold)
+    internal static string BuildRhythmSecondaryLine(SkillCooldownController cooldowns)
     {
-        float bpm = BeatClock.Instance != null ? BeatClock.Instance.CurrentBpm : 120f;
         bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
         float feverLeft = FeverTimeController.Instance != null
             ? FeverTimeController.Instance.FeverRemaining
             : 0f;
+
+        if (fever)
+        {
+            return $"<color=#FFB74D><b>FEVER TIME</b></color>{Sep}" +
+                   $"DMG x{FeverTimeController.DamageMultiplier:0.#}{Sep}{feverLeft:0.0}s";
+        }
+
+        float bpm = BeatClock.Instance != null ? BeatClock.Instance.CurrentBpm : 120f;
         float tempoScale = BeatClock.Instance != null ? BeatClock.Instance.TempoScale : 1f;
+        string bpmPart = tempoScale != 1f
+            ? $"{bpm:0} BPM <size=90%>(x{tempoScale:0.##})</size>"
+            : $"{bpm:0} BPM";
 
-        string bpmPart = fever
-            ? $"<color=#FFB74D><b>FEVER</b> x{FeverTimeController.DamageMultiplier:0.#}</color> ({feverLeft:0.0}s)"
-            : tempoScale != 1f
-                ? $"{bpm:0} BPM <size=90%>(x{tempoScale:0.##})</size>"
-                : $"{bpm:0} BPM";
+        float overloadCd = cooldowns != null ? cooldowns.GetRemaining(CommandType.OverloadStrike) : 0f;
+        float chainCd = cooldowns != null ? cooldowns.GetRemaining(CommandType.ChainZap) : 0f;
 
-        float strikeCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.OverloadStrike) : 0f;
-        float chainCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.ChainZap) : 0f;
-
-        int perfect = _stats != null ? _stats.PerfectCount : 0;
-        int good = _stats != null ? _stats.GoodCount : 0;
-        int miss = _stats != null ? _stats.MissCount : 0;
-        int towers = TowerPlacer.Instance != null ? TowerPlacer.Instance.TowerCount : 0;
-
-        string towerSel = TowerSelection.IsArmed ? "Place ON" : "Place OFF";
-
-        return
-            $"{bpmPart}{Sep}Strike {FormatCdRich(strikeCd)}{Sep}Chain {FormatCdRich(chainCd)}{Sep}" +
-            $"P{perfect} G{good} M{miss}{Sep}Towers {towers}{Sep}{towerSel}";
+        return $"{bpmPart}{Sep}Overload {FormatCdRich(overloadCd)}{Sep}Chain {FormatCdRich(chainCd)}";
     }
 
     static string FormatHearts(int hp, int maxHp, bool crisis)

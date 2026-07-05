@@ -24,6 +24,7 @@ public class CombatVfxService : MonoBehaviour
         _poolRoot = new GameObject("CombatVfxPool").transform;
         _poolRoot.SetParent(transform);
         ScreenShake.EnsureOnMainCamera();
+        HitStop.Ensure();
     }
 
     void OnDestroy()
@@ -32,12 +33,16 @@ public class CombatVfxService : MonoBehaviour
             Instance = null;
     }
 
-    public void PlayTowerShot(Vector3 from, Vector3 to, TowerType towerType, float damage, Transform towerTransform = null)
+    public void PlayTowerShot(Vector3 from, Vector3 to, float damage, Transform towerTransform = null)
     {
-        StartCoroutine(ProjectileRoutine(from, to, GetShotColor(towerType), damage));
-        if (towerTransform != null)
-            towerTransform.GetComponent<TowerFireRecoil>()?.Punch();
-        SimpleAudio.Instance?.PlayTowerFire(towerType);
+        bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
+        var color = ShotColor;
+        if (fever)
+            color = Color.Lerp(color, new Color(1f, 0.78f, 0.2f), 0.5f);
+
+        StartCoroutine(ProjectileRoutine(from, to, color, fever ? 0.13f : 0.1f, fever ? 0.22f : 0.18f));
+        towerTransform?.GetComponent<TowerFireRecoil>()?.Punch();
+        SimpleAudio.Instance?.PlayTowerFire(fever);
     }
 
     public void ReportDamage(EnemyHealth enemy, float amount, Vector3? sourcePos = null)
@@ -45,13 +50,23 @@ public class CombatVfxService : MonoBehaviour
         if (enemy == null)
             return;
 
+        bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
         var pos = enemy.transform.position;
         if (enemy.IsAlive)
-            StartCoroutine(HitFlashRoutine(enemy));
-        SpawnHitParticles(pos, GetDamageColor(amount));
-        SpawnDamagePopup(pos, amount);
-        ScreenShake.Instance?.Shake(amount >= 8f ? 0.12f : 0.05f, 0.12f);
-        SimpleAudio.Instance?.PlayEnemyHit(amount);
+            StartCoroutine(HitFlashRoutine(enemy, fever));
+
+        var color = GetDamageColor(amount);
+        if (fever)
+            color = Color.Lerp(color, new Color(1f, 0.55f, 0.12f), 0.45f);
+
+        int particleCount = fever ? (amount >= 6f ? 14 : 10) : 10;
+        float particleSpeed = fever ? 0.55f : 0.45f;
+        SpawnHitParticles(pos, color, particleCount, particleSpeed);
+        SpawnDamagePopup(pos, amount, fever);
+        ScreenShake.Instance?.Shake(
+            fever ? (amount >= 8f ? 0.14f : 0.08f) : (amount >= 8f ? 0.12f : 0.05f),
+            fever ? 0.14f : 0.12f);
+        SimpleAudio.Instance?.PlayEnemyHit(amount, fever);
     }
 
     public void ReportDeath(EnemyHealth enemy)
@@ -59,8 +74,9 @@ public class CombatVfxService : MonoBehaviour
         if (enemy == null)
             return;
 
+        bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
         var pos = enemy.transform.position;
-        SpawnDeathBurst(pos, enemy.kind);
+        SpawnDeathBurst(pos, enemy.kind, fever);
         SimpleAudio.Instance?.PlayEnemyDeath();
     }
 
@@ -99,11 +115,11 @@ public class CombatVfxService : MonoBehaviour
             PlayGoldFlyToCore(towers, corePos, goldReward);
     }
 
-    public void PlayRhythmSalvoShot(Vector3 from, Vector3 to, TowerType towerType, float damage, Transform towerTransform)
+    public void PlayRhythmSalvoShot(Vector3 from, Vector3 to, float damage, Transform towerTransform)
     {
-        StartCoroutine(RhythmSalvoProjectileRoutine(from, to, GetRhythmSalvoColor(towerType)));
+        StartCoroutine(RhythmSalvoProjectileRoutine(from, to, RhythmSalvoColor));
         towerTransform?.GetComponent<TowerFireRecoil>()?.Punch();
-        SimpleAudio.Instance?.PlayTowerFire(towerType);
+        SimpleAudio.Instance?.PlayTowerFire();
     }
 
     static float GetRhythmShakeIntensity(CommandType type) => type switch
@@ -121,6 +137,9 @@ public class CombatVfxService : MonoBehaviour
         return Vector3.zero;
     }
 
+    static readonly Color RhythmSalvoColor = Color.Lerp(
+        new Color(0.95f, 0.95f, 1f), new Color(1f, 0.92f, 0.45f), 0.45f);
+
     static Color GetRhythmCommandColor(CommandType type) => type switch
     {
         CommandType.GoldPulse => new Color(1f, 0.88f, 0.28f, 0.88f),
@@ -131,12 +150,6 @@ public class CombatVfxService : MonoBehaviour
         CommandType.TempoDown => new Color(0.65f, 0.58f, 1f, 0.85f),
         _ => new Color(1f, 0.85f, 0.25f, 0.85f)
     };
-
-    static Color GetRhythmSalvoColor(TowerType type)
-    {
-        var baseColor = GetShotColor(type);
-        return Color.Lerp(baseColor, new Color(1f, 0.92f, 0.45f), 0.45f);
-    }
 
     void PlayGoldFlyToCore(TowerRegistry towers, Vector3 corePos, int totalGold)
     {
@@ -323,10 +336,10 @@ public class CombatVfxService : MonoBehaviour
         ScreenShake.Instance?.Shake(0.1f, 0.18f);
     }
 
-    public void PlayTowerPlaced(Vector3 pos, TowerType type)
+    public void PlayTowerPlaced(Vector3 pos)
     {
-        StartCoroutine(ExpandRingRoutine(pos, 0.55f, GetShotColor(type)));
-        SimpleAudio.Instance?.PlayTowerFire(type);
+        StartCoroutine(ExpandRingRoutine(pos, 0.55f, ShotColor));
+        SimpleAudio.Instance?.PlayTowerFire();
     }
 
     public void PlaySkillSuccess(CommandType type)
@@ -336,6 +349,13 @@ public class CombatVfxService : MonoBehaviour
 
     public void PlayFeverActivated()
     {
+        Vector3 corePos = GetCorePosition();
+        var feverColor = new Color(1f, 0.55f, 0.12f, 0.55f);
+
+        ScreenShake.Instance?.Shake(0.14f, 0.2f);
+        StartCoroutine(ExpandRingRoutine(corePos, 2.1f, feverColor));
+        SpawnHitParticles(corePos, feverColor, 14, 0.48f);
+        BaseHealth.Instance?.GetComponent<CoreBeatPulse>()?.PulseFeverActivate();
         SimpleAudio.Instance?.PlayFeverActivate();
     }
 
@@ -379,7 +399,7 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    IEnumerator ProjectileRoutine(Vector3 from, Vector3 to, Color color, float damage)
+    IEnumerator ProjectileRoutine(Vector3 from, Vector3 to, Color color, float duration, float projectileScale)
     {
         var go = new GameObject("Projectile");
         go.transform.SetParent(_poolRoot);
@@ -388,9 +408,8 @@ public class CombatVfxService : MonoBehaviour
         sr.color = color;
         sr.sortingOrder = 25;
         go.transform.position = from;
-        go.transform.localScale = Vector3.one * 0.18f;
+        go.transform.localScale = Vector3.one * projectileScale;
 
-        const float duration = 0.1f;
         float elapsed = 0f;
         while (elapsed < duration)
         {
@@ -404,7 +423,7 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    IEnumerator HitFlashRoutine(EnemyHealth enemy)
+    IEnumerator HitFlashRoutine(EnemyHealth enemy, bool fever = false)
     {
         if (enemy == null)
             yield break;
@@ -414,7 +433,10 @@ public class CombatVfxService : MonoBehaviour
             yield break;
 
         Color original = sr.color;
-        sr.color = new Color(1f, 0.35f, 0.35f, original.a);
+        Color flash = fever
+            ? new Color(1f, 0.55f, 0.15f, original.a)
+            : new Color(1f, 0.35f, 0.35f, original.a);
+        sr.color = flash;
         float t = 0f;
         const float duration = 0.1f;
         while (t < duration)
@@ -423,7 +445,7 @@ public class CombatVfxService : MonoBehaviour
                 yield break;
 
             t += Time.deltaTime;
-            sr.color = Color.Lerp(new Color(1f, 0.35f, 0.35f, original.a), original, t / duration);
+            sr.color = Color.Lerp(flash, original, t / duration);
             yield return null;
         }
 
@@ -448,7 +470,7 @@ public class CombatVfxService : MonoBehaviour
         }
     }
 
-    void SpawnDeathBurst(Vector3 pos, EnemyKind kind)
+    void SpawnDeathBurst(Vector3 pos, EnemyKind kind, bool fever = false)
     {
         Color color = kind switch
         {
@@ -457,22 +479,27 @@ public class CombatVfxService : MonoBehaviour
             _ => new Color(0.35f, 0.75f, 1f, 1f)
         };
 
+        if (fever)
+            color = Color.Lerp(color, new Color(1f, 0.62f, 0.15f), 0.4f);
+
         int particles = kind switch
         {
-            EnemyKind.Elite => 22,
-            EnemyKind.Downbeat => 18,
-            _ => 12
+            EnemyKind.Elite => fever ? 28 : 22,
+            EnemyKind.Downbeat => fever ? 24 : 18,
+            _ => fever ? 16 : 12
         };
 
         float ring = kind switch
         {
-            EnemyKind.Elite => 1.45f,
-            EnemyKind.Downbeat => 1.2f,
-            _ => 0.75f
+            EnemyKind.Elite => fever ? 1.75f : 1.45f,
+            EnemyKind.Downbeat => fever ? 1.45f : 1.2f,
+            _ => fever ? 0.95f : 0.75f
         };
 
-        SpawnHitParticles(pos, color, particles, 0.7f);
+        SpawnHitParticles(pos, color, particles, fever ? 0.85f : 0.7f);
         StartCoroutine(ExpandRingRoutine(pos, ring, color));
+        if (fever)
+            ScreenShake.Instance?.Shake(0.1f, 0.14f);
     }
 
     public void PlayEliteRegenPulse(Vector3 pos)
@@ -525,10 +552,14 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    void SpawnDamagePopup(Vector3 pos, float damage)
+    void SpawnDamagePopup(Vector3 pos, float damage, bool fever = false)
     {
+        var color = GetDamageColor(damage);
+        if (fever)
+            color = Color.Lerp(color, new Color(1f, 0.72f, 0.2f), 0.55f);
+
         StartCoroutine(FloatingTextRoutine(
-            pos + Vector3.up * 0.15f, FormatDamagePopup(damage), GetDamageColor(damage)));
+            pos + Vector3.up * 0.15f, FormatDamagePopup(damage), color, fever ? 0.62f : 0.55f, fever ? 0.78f : 0.65f));
     }
 
     static string FormatDamagePopup(float damage) =>
@@ -568,7 +599,7 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    static Color GetShotColor(TowerType type) => new Color(0.95f, 0.95f, 1f);
+    static readonly Color ShotColor = new(0.95f, 0.95f, 1f);
 
     static Color GetDamageColor(float damage) =>
         damage >= 8f ? new Color(1f, 0.45f, 0.25f)

@@ -90,7 +90,7 @@ public class BeatTower : MonoBehaviour
         if (target != null)
         {
             CombatVfxService.Instance?.PlayTowerShot(
-                transform.position, target.transform.position, _tower.towerType, damage, transform);
+                transform.position, target.transform.position, damage, transform);
             target.TakeDamage(damage);
         }
     }
@@ -103,7 +103,7 @@ public class BeatTower : MonoBehaviour
 
         float damage = damageOverride >= 0f ? damageOverride : ActiveDamage;
         CombatVfxService.Instance?.PlayTowerShot(
-            transform.position, target.transform.position, _tower.towerType, damage, transform);
+            transform.position, target.transform.position, damage, transform);
         target.TakeDamage(damage);
         return true;
     }
@@ -118,7 +118,7 @@ public class BeatTower : MonoBehaviour
             : transform.position + Vector3.up * 2.4f;
 
         CombatVfxService.Instance?.PlayRhythmSalvoShot(
-            transform.position, to, _tower.towerType, damage, transform);
+            transform.position, to, damage, transform);
 
         if (target != null)
         {

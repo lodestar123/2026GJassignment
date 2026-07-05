@@ -3,8 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// offset felt — playhead·탭 마커·판정. OnBeat(Core 등)는 BeatClock baseline felt.
-/// Scroll 선택 패턴의 HitFraction 위치에 가이드 선 표시.
+/// 리듬 타임라인 — bar = felt 마디(0~duration).
+/// 사이클은 MeasureStart + offset 에서 시작(지연). 가이드·playhead·탭 마커 모두 felt 축.
+/// OnBeat(Core 등)는 BeatClock baseline felt 별도.
 /// </summary>
 [DefaultExecutionOrder(200)]
 public class RhythmTimelineUI : MonoBehaviour
@@ -59,6 +60,10 @@ public class RhythmTimelineUI : MonoBehaviour
     [SerializeField]
     bool playTapSound = true;
 
+    [SerializeField]
+    [Tooltip("켜면 Awake에 스크립트 기본 크기·배치를 적용합니다. StartScene 등 씬 bake 레이아웃은 끄세요.")]
+    bool applyScriptLayoutOnAwake = true;
+
     readonly List<TapMarkerVisual> _activeMarkers = new();
     readonly List<Image> _guideLines = new();
     int _markerSequence;
@@ -72,7 +77,8 @@ public class RhythmTimelineUI : MonoBehaviour
     void Awake()
     {
         EnforceSafeFadeValues();
-        ApplyTimelineLayout();
+        if (applyScriptLayoutOnAwake)
+            ApplyTimelineLayout();
         ResolveReferences();
     }
 
@@ -254,7 +260,7 @@ public class RhythmTimelineUI : MonoBehaviour
 
     void OnPatternSelectionChanged(CommandType type) => RefreshPatternGuides();
 
-    void RefreshPatternGuides()
+    void RefreshPatternGuides(bool force = false)
     {
         ResolveReferences();
         EnsureGuidesRoot();
@@ -266,7 +272,7 @@ public class RhythmTimelineUI : MonoBehaviour
         if (type == CommandType.None)
             type = CommandType.GoldPulse;
 
-        if (_lastGuideType == type && _guideLines.Count > 0)
+        if (!force && _lastGuideType == type && _guideLines.Count > 0)
             return;
 
         _lastGuideType = type;

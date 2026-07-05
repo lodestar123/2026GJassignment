@@ -73,6 +73,9 @@ public class GameManager : MonoBehaviour
         if (_ended)
             return;
 
+        if (BeatClock.IsRhythmTestInvincible)
+            return;
+
         EndDefeat();
     }
 

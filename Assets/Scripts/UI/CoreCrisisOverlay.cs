@@ -1,11 +1,10 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
 /// Core HP 1일 때 화면 붉은 비네트 + 박자 심장박 흔들림.
 /// </summary>
-public class CoreCrisisOverlay : MonoBehaviour
+public class CoreCrisisOverlay : MonoBehaviour, IRuntimeSceneUi
 {
     public static CoreCrisisOverlay Instance { get; private set; }
 
@@ -15,24 +14,10 @@ public class CoreCrisisOverlay : MonoBehaviour
     BaseHealth _core;
     bool _crisisActive;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsureOnGameScene()
+    public void EnsureSceneHierarchy()
     {
-        var scene = SceneManager.GetActiveScene();
-        if (scene.name != SceneNames.Game)
-            return;
-
-        if (FindAnyObjectByType<CoreCrisisOverlay>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("CoreCrisisOverlay");
-        go.transform.SetParent(canvas.transform, false);
-        go.transform.SetAsFirstSibling();
-        go.AddComponent<CoreCrisisOverlay>();
+        BuildVignette();
+        SetCrisisActive(false);
     }
 
     void Awake()
@@ -44,8 +29,7 @@ public class CoreCrisisOverlay : MonoBehaviour
         }
 
         Instance = this;
-        BuildVignette();
-        SetCrisisActive(false);
+        EnsureSceneHierarchy();
     }
 
     void Start()
@@ -78,7 +62,10 @@ public class CoreCrisisOverlay : MonoBehaviour
         if (vignette != null)
             return;
 
-        var rt = gameObject.AddComponent<RectTransform>();
+        if (transform is not RectTransform)
+            gameObject.AddComponent<RectTransform>();
+
+        var rt = transform as RectTransform;
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero;

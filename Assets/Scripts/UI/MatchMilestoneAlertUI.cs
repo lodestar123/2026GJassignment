@@ -1,11 +1,10 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 매치 마일스톤 배너 (2.8s). GameScene Canvas에 자동 생성.
 /// </summary>
-public class MatchMilestoneAlertUI : MonoBehaviour
+public class MatchMilestoneAlertUI : MonoBehaviour, IRuntimeSceneUi
 {
     public static MatchMilestoneAlertUI Instance { get; private set; }
 
@@ -14,23 +13,11 @@ public class MatchMilestoneAlertUI : MonoBehaviour
 
     float _hideAt = -1f;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsureInstance()
+    public void EnsureSceneHierarchy()
     {
-        var scene = SceneManager.GetActiveScene();
-        if (scene.name != SceneNames.Game)
-            return;
-
-        if (FindAnyObjectByType<MatchMilestoneAlertUI>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("MatchMilestoneAlertUI");
-        go.transform.SetParent(canvas.transform, false);
-        go.AddComponent<MatchMilestoneAlertUI>();
+        EnsureAlertText();
+        if (alertText != null)
+            alertText.gameObject.SetActive(false);
     }
 
     void Awake()
@@ -42,11 +29,8 @@ public class MatchMilestoneAlertUI : MonoBehaviour
         }
 
         Instance = this;
-        EnsureAlertText();
+        EnsureSceneHierarchy();
         MatchMilestoneDirector.OnMilestoneReached += HandleMilestone;
-
-        if (alertText != null)
-            alertText.gameObject.SetActive(false);
     }
 
     void OnDestroy()
@@ -100,13 +84,13 @@ public class MatchMilestoneAlertUI : MonoBehaviour
             MatchMilestoneKind.PressureRising30 =>
                 "<color=#81D4FA><b>압박 구간</b></color>\n<size=85%>적 스폰이 점점 빨라집니다</size>",
             MatchMilestoneKind.EliteWarning60 =>
-                "<color=#FFB74D><b>!! ELITE 60s 임박 !!</b></color>\n<size=85%>3초 후 — 받는 피해 25% 감소</size>",
+                "<color=#FFB74D><b>!! ELITE 60s 임박 !!</b></color>\n<size=85%>3초 후 - 받는 피해 25% 감소</size>",
             MatchMilestoneKind.EliteWarning90 =>
-                "<color=#FF5252><b>!! ELITE 90s 임박 !!</b></color>\n<size=85%>3초 후 — 강박마다 HP +3</size>",
+                "<color=#FF5252><b>!! ELITE 90s 임박 !!</b></color>\n<size=85%>3초 후 - 강박마다 HP +3</size>",
             MatchMilestoneKind.LastStand100 =>
-                "<color=#FF5252><b>LAST STAND</b></color>\n<size=85%>마지막 20초 — 스폰 가속!</size>",
+                "<color=#FF5252><b>LAST STAND</b></color>\n<size=85%>마지막 20초 - 스폰 가속!</size>",
             MatchMilestoneKind.FinalPush110 =>
-                "<color=#FF1744><b>FINAL PUSH</b></color>\n<size=85%>최종 러시 — 버텨라!</size>",
+                "<color=#FF1744><b>FINAL PUSH</b></color>\n<size=85%>최종 러시 - 버텨라!</size>",
             _ => ""
         };
 

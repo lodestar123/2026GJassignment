@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 엘리트 웨이브 경고 배너 (2.5s). 씬에 없으면 Canvas에 자동 생성.
 /// </summary>
-public class EliteSpawnAlertUI : MonoBehaviour
+public class EliteSpawnAlertUI : MonoBehaviour, IRuntimeSceneUi
 {
     public static EliteSpawnAlertUI Instance { get; private set; }
 
@@ -13,19 +13,11 @@ public class EliteSpawnAlertUI : MonoBehaviour
 
     float _hideAt = -1f;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsureInstance()
+    public void EnsureSceneHierarchy()
     {
-        if (FindAnyObjectByType<EliteSpawnAlertUI>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("EliteSpawnAlertUI");
-        go.transform.SetParent(canvas.transform, false);
-        go.AddComponent<EliteSpawnAlertUI>();
+        EnsureAlertText();
+        if (alertText != null)
+            alertText.gameObject.SetActive(false);
     }
 
     void Awake()
@@ -37,11 +29,8 @@ public class EliteSpawnAlertUI : MonoBehaviour
         }
 
         Instance = this;
-        EnsureAlertText();
+        EnsureSceneHierarchy();
         EliteSpawnDirector.OnWaveStarted += HandleWaveStarted;
-
-        if (alertText != null)
-            alertText.gameObject.SetActive(false);
     }
 
     void OnDestroy()

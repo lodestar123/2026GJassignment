@@ -174,7 +174,7 @@ public class TowerPlacer : MonoBehaviour
         _registry?.RegisterTower(tower);
 
         CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, spentGold);
-        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position, TowerType.Beat);
+        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position);
         Debug.Log($"[TowerPlacer] Tower 설치 ({spentGold}G)");
     }
 

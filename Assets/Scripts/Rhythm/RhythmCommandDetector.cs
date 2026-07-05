@@ -17,6 +17,12 @@ public class RhythmCommandDetector : MonoBehaviour
 
     public int CurrentTapCount => _seqOpen ? _seqTaps.Count : 0;
 
+    [SerializeField] bool commandsEnabled = true;
+
+    public bool CommandsEnabled => commandsEnabled;
+
+    public void SetCommandsEnabled(bool enabled) => commandsEnabled = enabled;
+
     float _inputStunUntil;
 
     readonly List<float> _seqTaps = new();
@@ -90,7 +96,8 @@ public class RhythmCommandDetector : MonoBehaviour
         {
             float rawTime = Time.time;
             EmitTapFeedback(rawTime);
-            RegisterTap(rawTime);
+            if (commandsEnabled)
+                RegisterTap(rawTime);
         }
 
         TryCloseIfExpired();

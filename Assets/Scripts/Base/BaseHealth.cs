@@ -52,7 +52,7 @@ public class BaseHealth : MonoBehaviour
         if (CurrentHp == 1)
             CombatVfxService.Instance?.PlayCoreCrisisPulse(transform.position);
 
-        if (!IsAlive)
+        if (!IsAlive && !BeatClock.IsRhythmTestInvincible)
             OnDestroyed?.Invoke();
     }
 

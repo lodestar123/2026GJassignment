@@ -82,7 +82,7 @@ public class PracticeSceneController : MonoBehaviour
         SkillCooldownController.Instance?.SetCooldownsDisabled(true);
 
         if (infoText != null)
-            infoText.text = "4패턴 연습, CD 비활성, 적 없음";
+            infoText.text = "패턴 연습, CD 비활성, 적 없음";
 
         if (standaloneExitButton != null)
             standaloneExitButton.onClick.AddListener(() => SceneManager.LoadScene(SceneNames.Start));

@@ -125,15 +125,20 @@ public class SimpleAudio : MonoBehaviour
         }
     }
 
-    public void PlayTowerFire(TowerType type)
+    public void PlayTowerFire(bool fever = false)
     {
-        PlayBeep(760f, 0.035f, sfxVolume * 0.25f, 1.1f);
+        float hz = fever ? 920f : 760f;
+        float vol = fever ? sfxVolume * 0.34f : sfxVolume * 0.25f;
+        PlayBeep(hz, fever ? 0.042f : 0.035f, vol, fever ? 1.2f : 1.1f);
     }
 
-    public void PlayEnemyHit(float damage)
+    public void PlayEnemyHit(float damage, bool fever = false)
     {
-        float hz = damage >= 8f ? 280f : 420f;
-        PlayBeep(hz, 0.03f, sfxVolume * 0.22f, 1f);
+        float hz = fever
+            ? (damage >= 8f ? 380f : 520f)
+            : (damage >= 8f ? 280f : 420f);
+        float vol = fever ? sfxVolume * 0.3f : sfxVolume * 0.22f;
+        PlayBeep(hz, fever ? 0.038f : 0.03f, vol, fever ? 1.12f : 1f);
     }
 
     public void PlayEnemyDeath()
@@ -158,7 +163,10 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayFeverActivate()
     {
-        PlayBeep(720f, 0.08f, sfxVolume * 0.38f, 1.15f);
+        float vol = sfxVolume * 0.34f;
+        PlayBeep(520f, 0.08f, vol * 0.9f, 1f);
+        PlayBeep(880f, 0.1f, vol, 1f);
+        PlayBeep(1180f, 0.12f, vol * 0.85f, 1f);
     }
 
     public void PlayOverloadStrike()

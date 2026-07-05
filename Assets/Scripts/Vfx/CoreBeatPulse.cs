@@ -10,8 +10,12 @@ public class CoreBeatPulse : MonoBehaviour
     const float DownbeatPulse = 1.32f;
     const float BeatPulse = 1.18f;
     const float RhythmPerfectPulse = 1.58f;
+    const float FeverActivatePulse = 1.42f;
+    const float FeverBeatPulse = 1.24f;
+    const float FeverDownbeatPulse = 1.32f;
     const float PulseDecaySpeed = 6.5f;
     static readonly Color RingBaseColor = new(1f, 0.85f, 0.25f, 0.72f);
+    static readonly Color FeverRingColor = new(1f, 0.55f, 0.12f, 0.52f);
     static readonly Vector3 RingRestScale = Vector3.one * 0.85f;
 
     Transform _coreTransform;
@@ -21,6 +25,8 @@ public class CoreBeatPulse : MonoBehaviour
     float _pulseScale = 1f;
     Coroutine _ringRoutine;
     bool _beatSubscribed;
+    bool _feverSubscribed;
+    bool _feverActive;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureOnGameScene()
@@ -52,15 +58,24 @@ public class CoreBeatPulse : MonoBehaviour
         EnsureRing();
     }
 
-    void OnEnable() => TrySubscribeBeat();
+    void OnEnable()
+    {
+        TrySubscribeBeat();
+        TrySubscribeFever();
+    }
 
-    void Start() => TrySubscribeBeat();
+    void Start()
+    {
+        TrySubscribeBeat();
+        TrySubscribeFever();
+    }
 
     void OnDisable()
     {
         if (BeatClock.Instance != null)
             BeatClock.Instance.OnBeat -= OnBeat;
         _beatSubscribed = false;
+        UnsubscribeFever();
 
         if (_ringRoutine != null)
         {
@@ -85,6 +100,9 @@ public class CoreBeatPulse : MonoBehaviour
         if (!_beatSubscribed)
             TrySubscribeBeat();
 
+        if (!_feverSubscribed)
+            TrySubscribeFever();
+
         _pulseScale = Mathf.Lerp(_pulseScale, 1f, Time.deltaTime * PulseDecaySpeed);
         _coreTransform.localScale = Vector3.Scale(
             _baseScale,
@@ -103,6 +121,61 @@ public class CoreBeatPulse : MonoBehaviour
         _ringRenderer.sprite = GreyboxSprites.Ring;
         _ringRenderer.sortingOrder = _coreRenderer != null ? _coreRenderer.sortingOrder - 1 : 1;
         RestoreRingRest();
+    }
+
+    void TrySubscribeFever()
+    {
+        if (_feverSubscribed)
+            return;
+
+        var fever = FeverTimeController.Instance ?? Object.FindAnyObjectByType<FeverTimeController>();
+        if (fever == null)
+            return;
+
+        fever.OnFeverActivated -= OnFeverActivated;
+        fever.OnFeverActivated += OnFeverActivated;
+        fever.OnFeverEnded -= OnFeverEnded;
+        fever.OnFeverEnded += OnFeverEnded;
+        _feverActive = fever.IsFeverActive;
+        _feverSubscribed = true;
+    }
+
+    void UnsubscribeFever()
+    {
+        var fever = FeverTimeController.Instance ?? Object.FindAnyObjectByType<FeverTimeController>();
+        if (fever != null)
+        {
+            fever.OnFeverActivated -= OnFeverActivated;
+            fever.OnFeverEnded -= OnFeverEnded;
+        }
+
+        _feverSubscribed = false;
+        _feverActive = false;
+    }
+
+    void OnFeverActivated() => _feverActive = true;
+
+    void OnFeverEnded()
+    {
+        _feverActive = false;
+        RestoreRingRest();
+    }
+
+    /// <summary>피버 발동 — Core 링·본체 폭발 펄스.</summary>
+    public void PulseFeverActivate()
+    {
+        _feverActive = true;
+        _pulseScale = FeverActivatePulse;
+
+        if (_ringRoutine != null)
+        {
+            StopCoroutine(_ringRoutine);
+            _ringRoutine = null;
+        }
+
+        RestoreRingRest();
+        _ringRoutine = StartCoroutine(RhythmPerfectRingRoutine(FeverRingColor, 2.0f, 0.42f));
+        StartCoroutine(CoreTintRoutine(FeverRingColor));
     }
 
     /// <summary>Perfect 마디 성공 — Core 본체·링 강한 펄스.</summary>
@@ -155,13 +228,11 @@ public class CoreBeatPulse : MonoBehaviour
         _coreRenderer.color = original;
     }
 
-    IEnumerator RhythmPerfectRingRoutine(Color ringColor)
+    IEnumerator RhythmPerfectRingRoutine(Color ringColor, float maxScale = 2.65f, float duration = 0.52f)
     {
         if (_ringRenderer == null)
             yield break;
 
-        const float duration = 0.52f;
-        const float maxScale = 2.65f;
         float elapsed = 0f;
 
         try
@@ -190,7 +261,21 @@ public class CoreBeatPulse : MonoBehaviour
         if (BeatClock.Instance == null)
             return;
 
-        _pulseScale = BeatClock.Instance.IsDownbeat ? DownbeatPulse : BeatPulse;
+        bool downbeat = BeatClock.Instance.IsDownbeat;
+        if (_feverActive)
+        {
+            _pulseScale = downbeat ? FeverDownbeatPulse : FeverBeatPulse;
+            if (_ringRoutine != null)
+            {
+                StopCoroutine(_ringRoutine);
+                _ringRoutine = null;
+            }
+
+            _ringRoutine = StartCoroutine(FeverBeatRingRoutine(downbeat));
+            return;
+        }
+
+        _pulseScale = downbeat ? DownbeatPulse : BeatPulse;
 
         if (_ringRoutine != null)
         {
@@ -199,7 +284,44 @@ public class CoreBeatPulse : MonoBehaviour
         }
 
         RestoreRingRest();
-        _ringRoutine = StartCoroutine(RingPulseRoutine(BeatClock.Instance.IsDownbeat));
+        _ringRoutine = StartCoroutine(RingPulseRoutine(downbeat));
+    }
+
+    IEnumerator FeverBeatRingRoutine(bool downbeat)
+    {
+        if (_ringRenderer == null)
+            yield break;
+
+        float duration = downbeat ? 0.34f : 0.26f;
+        float maxScale = downbeat ? 1.95f : 1.65f;
+        float elapsed = 0f;
+
+        try
+        {
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float scaleT = 1f - (1f - t) * (1f - t);
+                float scale = Mathf.Lerp(0.85f, maxScale, scaleT);
+                _ringRenderer.transform.localScale = RingRestScale * (scale / 0.85f);
+                float alpha = FeverRingColor.a * (1f - t * t * 0.7f);
+                _ringRenderer.color = new Color(FeverRingColor.r, FeverRingColor.g, FeverRingColor.b, alpha);
+                yield return null;
+            }
+        }
+        finally
+        {
+            if (!_feverActive)
+                RestoreRingRest();
+            else
+            {
+                _ringRenderer.transform.localScale = RingRestScale;
+                _ringRenderer.color = new Color(FeverRingColor.r, FeverRingColor.g, FeverRingColor.b, 0.22f);
+            }
+
+            _ringRoutine = null;
+        }
     }
 
     void RestoreRingRest()

@@ -1,13 +1,12 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
 /// PERFECT 연속 콤보 — 피버(8) 진행도를 큰 숫자로 표시.
 /// </summary>
-public class FeverComboUI : MonoBehaviour
+public class FeverComboUI : MonoBehaviour, IRuntimeSceneUi
 {
     public static FeverComboUI Instance { get; private set; }
 
@@ -19,37 +18,27 @@ public class FeverComboUI : MonoBehaviour
     const float RestOffsetY = 0f;
 
     RectTransform _root;
+    Image _bg;
     float _streak;
     int _required = FeverTimeController.RequiredPerfectStreak;
+    bool _feverActive;
     Coroutine _pulseRoutine;
     Coroutine _breakRoutine;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void Bootstrap()
+    public void EnsureSceneHierarchy()
     {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        TryEnsureInActiveScene();
+        ResolveRefs();
+        if (comboValueText == null)
+            BuildUi();
     }
 
-    static void OnSceneLoaded(Scene scene, LoadSceneMode mode) => TryEnsureInActiveScene();
-
-    static void TryEnsureInActiveScene()
+    void ResolveRefs()
     {
-        var scene = SceneManager.GetActiveScene();
-        if (scene.name != SceneNames.Game)
-            return;
-
-        if (FindAnyObjectByType<FeverComboUI>(FindObjectsInactive.Include) != null)
-            return;
-
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        var go = new GameObject("FeverComboUI", typeof(RectTransform));
-        go.transform.SetParent(canvas.transform, false);
-        go.transform.SetAsLastSibling();
-        go.AddComponent<FeverComboUI>();
+        _root ??= transform as RectTransform;
+        comboLabelText ??= transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
+        comboValueText ??= transform.Find("Value")?.GetComponent<TextMeshProUGUI>();
+        _bg ??= transform.Find("Bg")?.GetComponent<Image>();
+        progressFill ??= transform.Find("BarBg/BarFill")?.GetComponent<Image>();
     }
 
     void Awake()
@@ -61,7 +50,7 @@ public class FeverComboUI : MonoBehaviour
         }
 
         Instance = this;
-        BuildUi();
+        EnsureSceneHierarchy();
         RefreshDisplay(false);
     }
 
@@ -72,22 +61,81 @@ public class FeverComboUI : MonoBehaviour
         {
             fever.OnStreakChanged -= HandleStreakChanged;
             fever.OnStreakChanged += HandleStreakChanged;
+            fever.OnFeverActivated -= HandleFeverActivated;
+            fever.OnFeverActivated += HandleFeverActivated;
+            fever.OnFeverEnded -= HandleFeverEnded;
+            fever.OnFeverEnded += HandleFeverEnded;
+            _feverActive = fever.IsFeverActive;
             HandleStreakChanged(fever.PerfectStreak, FeverTimeController.RequiredPerfectStreak);
         }
+    }
+
+    void Update()
+    {
+        if (!_feverActive || comboValueText == null)
+            return;
+
+        float left = FeverTimeController.Instance != null
+            ? FeverTimeController.Instance.FeverRemaining
+            : 0f;
+        comboValueText.text = left.ToString("0.0");
+        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f);
+        comboValueText.color = Color.Lerp(
+            new Color(1f, 0.55f, 0.1f),
+            new Color(1f, 0.92f, 0.35f),
+            pulse);
+
+        if (progressFill != null)
+            progressFill.fillAmount = Mathf.Clamp01(left / FeverTimeController.FeverDurationSeconds);
     }
 
     void OnDestroy()
     {
         var fever = FeverTimeController.Instance ?? FindAnyObjectByType<FeverTimeController>();
         if (fever != null)
+        {
             fever.OnStreakChanged -= HandleStreakChanged;
+            fever.OnFeverActivated -= HandleFeverActivated;
+            fever.OnFeverEnded -= HandleFeverEnded;
+        }
 
         if (Instance == this)
             Instance = null;
     }
 
+    void HandleFeverActivated()
+    {
+        _feverActive = true;
+        if (comboLabelText != null)
+        {
+            comboLabelText.text = "FEVER!!";
+            comboLabelText.color = new Color(1f, 0.72f, 0.15f, 1f);
+        }
+        if (_bg != null)
+            _bg.color = new Color(0.35f, 0.12f, 0.02f, 0.88f);
+        if (progressFill != null)
+            progressFill.color = new Color(1f, 0.55f, 0.08f, 1f);
+
+        if (_pulseRoutine != null)
+            StopCoroutine(_pulseRoutine);
+        _pulseRoutine = StartCoroutine(PulseRoutine(1.28f, 0.18f));
+    }
+
+    void HandleFeverEnded()
+    {
+        _feverActive = false;
+        if (_bg != null)
+            _bg.color = new Color(0.06f, 0.06f, 0.1f, 0.72f);
+        if (progressFill != null)
+            progressFill.color = new Color(1f, 0.72f, 0.18f, 0.95f);
+        RefreshDisplay(false);
+    }
+
     void BuildUi()
     {
+        if (comboValueText != null)
+            return;
+
         _root = transform as RectTransform;
         if (_root == null)
             _root = gameObject.AddComponent<RectTransform>();
@@ -112,6 +160,7 @@ public class FeverComboUI : MonoBehaviour
         bg.type = Image.Type.Sliced;
         bg.color = new Color(0.06f, 0.06f, 0.1f, 0.72f);
         bg.raycastTarget = false;
+        _bg = bg;
 
         var labelGo = new GameObject("Label");
         labelGo.transform.SetParent(transform, false);
@@ -188,7 +237,7 @@ public class FeverComboUI : MonoBehaviour
 
     void RefreshDisplay(bool increased)
     {
-        if (comboValueText == null)
+        if (comboValueText == null || _feverActive)
             return;
 
         comboValueText.text = FormatStreak(_streak);

@@ -82,10 +82,16 @@ public class RhythmInputSettings : MonoBehaviour
         return Instance != null ? Instance.InputOffsetSeconds : DefaultInputOffsetSeconds;
     }
 
+    /// <summary>판정·타임라인 felt 마디 원점 — wall MeasureStart + offset (= 사이클 지연).</summary>
+    public static float GetRhythmMeasureOrigin(float measureStartTime)
+    {
+        return measureStartTime + GetAppliedOffsetSeconds();
+    }
+
     /// <summary>판정·타임라인 felt 마디 내 경과.</summary>
     public static float GetFeltElapsedInMeasure(float wallTime, float measureStartTime)
     {
-        return (wallTime - GetAppliedOffsetSeconds()) - measureStartTime;
+        return wallTime - GetRhythmMeasureOrigin(measureStartTime);
     }
 
     /// <summary>설정 UI — 감도 0이면 baseline(0.24s).</summary>
