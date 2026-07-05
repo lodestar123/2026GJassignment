@@ -49,6 +49,10 @@ public class GameHudUI : MonoBehaviour
     const float LegacyDetailFontSize = 22f;
     const string Sep = " | ";
 
+    [Header("Layout")]
+    [Tooltip("켜면 스크립트 기본 크기·배치·폰트를 Awake에 적용합니다. 씬에서 직접 조절하려면 끄세요.")]
+    [SerializeField] bool applyScriptLayoutOnAwake;
+
     ResourceManager _resources;
     SkillCooldownController _cooldowns;
     RunStats _stats;
@@ -71,8 +75,11 @@ public class GameHudUI : MonoBehaviour
         if (!UsesCardLayout)
             TryResolveCardRefs();
 
-        ApplyHudLayout();
-        ApplyHudTypography();
+        if (applyScriptLayoutOnAwake)
+        {
+            ApplyHudLayout();
+            ApplyHudTypography();
+        }
     }
 
     void ApplyHudTypography()

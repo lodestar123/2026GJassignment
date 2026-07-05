@@ -77,6 +77,191 @@ public class CombatVfxService : MonoBehaviour
         SimpleAudio.Instance?.PlayGoldPulse();
     }
 
+    /// <summary>Perfect 마디 — Core·타워·맵 연동 연출.</summary>
+    public void PlayRhythmPerfectSuccess(CommandType type, int goldReward, TowerRegistry towers)
+    {
+        Vector3 corePos = GetCorePosition();
+
+        BaseHealth.Instance?.GetComponent<CoreBeatPulse>()?.PulseRhythmPerfect(type);
+
+        var color = GetRhythmCommandColor(type);
+        StartCoroutine(ExpandRingRoutine(corePos, 2.35f, color));
+        SpawnHitParticles(corePos, color, 16, 0.58f);
+        ScreenShake.Instance?.Shake(GetRhythmShakeIntensity(type), 0.2f);
+
+        if (towers != null && towers.BeatTowers.Count > 0)
+        {
+            foreach (var beat in towers.BeatTowers)
+                StartCoroutine(RhythmCoreLinkRoutine(corePos, beat.transform.position, color));
+        }
+
+        if (type == CommandType.GoldPulse && goldReward > 0)
+            PlayGoldFlyToCore(towers, corePos, goldReward);
+    }
+
+    public void PlayRhythmSalvoShot(Vector3 from, Vector3 to, TowerType towerType, float damage, Transform towerTransform)
+    {
+        StartCoroutine(RhythmSalvoProjectileRoutine(from, to, GetRhythmSalvoColor(towerType)));
+        towerTransform?.GetComponent<TowerFireRecoil>()?.Punch();
+        SimpleAudio.Instance?.PlayTowerFire(towerType);
+    }
+
+    static float GetRhythmShakeIntensity(CommandType type) => type switch
+    {
+        CommandType.GoldPulse => 0.17f,
+        CommandType.RhythmShot => 0.16f,
+        CommandType.OverloadStrike => 0.14f,
+        _ => 0.12f
+    };
+
+    static Vector3 GetCorePosition()
+    {
+        if (BaseHealth.Instance != null)
+            return BaseHealth.Instance.transform.position;
+        return Vector3.zero;
+    }
+
+    static Color GetRhythmCommandColor(CommandType type) => type switch
+    {
+        CommandType.GoldPulse => new Color(1f, 0.88f, 0.28f, 0.88f),
+        CommandType.RhythmShot => new Color(0.92f, 0.94f, 1f, 0.85f),
+        CommandType.OverloadStrike => new Color(1f, 0.38f, 0.32f, 0.88f),
+        CommandType.ChainZap => new Color(1f, 0.78f, 0.22f, 0.88f),
+        CommandType.TempoUp => new Color(0.4f, 0.88f, 1f, 0.85f),
+        CommandType.TempoDown => new Color(0.65f, 0.58f, 1f, 0.85f),
+        _ => new Color(1f, 0.85f, 0.25f, 0.85f)
+    };
+
+    static Color GetRhythmSalvoColor(TowerType type)
+    {
+        var baseColor = GetShotColor(type);
+        return Color.Lerp(baseColor, new Color(1f, 0.92f, 0.45f), 0.45f);
+    }
+
+    void PlayGoldFlyToCore(TowerRegistry towers, Vector3 corePos, int totalGold)
+    {
+        var spawns = new List<Vector3>();
+        if (towers != null)
+        {
+            foreach (var beat in towers.BeatTowers)
+                spawns.Add(beat.transform.position + Vector3.up * 0.15f);
+        }
+
+        if (spawns.Count == 0)
+            spawns.Add(corePos + Vector3.up * 1.6f);
+
+        int perTower = totalGold / spawns.Count;
+        int remainder = totalGold % spawns.Count;
+        bool playedAudio = false;
+
+        for (int i = 0; i < spawns.Count; i++)
+        {
+            int amount = perTower + (i == 0 ? remainder : 0);
+            if (amount <= 0)
+                continue;
+
+            StartCoroutine(GoldFlyToCoreRoutine(spawns[i], corePos, amount, !playedAudio));
+            playedAudio = true;
+        }
+    }
+
+    IEnumerator GoldFlyToCoreRoutine(Vector3 from, Vector3 to, int gold, bool playAudio)
+    {
+        var go = new GameObject("GoldFly");
+        go.transform.SetParent(_poolRoot);
+        go.transform.position = from;
+
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = $"+{gold}G";
+        tmp.fontSize = gold >= 20 ? 4.2f : 3.6f;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = new Color(1f, 0.9f, 0.28f, 1f);
+        if (BeatDefenderFonts.Pretendard != null)
+            tmp.font = BeatDefenderFonts.Pretendard;
+
+        if (playAudio)
+            SimpleAudio.Instance?.PlayGoldPulse();
+
+        const float duration = 0.62f;
+        float elapsed = 0f;
+        Vector3 start = from;
+        Vector3 end = to + Vector3.up * 0.2f;
+        Vector3 control = (start + end) * 0.5f + Vector3.up * 0.85f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float eased = t * t * (3f - 2f * t);
+            go.transform.position = QuadraticBezier(start, control, end, eased);
+            float scale = Mathf.Lerp(1.15f, 0.75f, t);
+            go.transform.localScale = Vector3.one * scale;
+            tmp.color = new Color(1f, 0.9f, 0.28f, 1f - t * 0.35f);
+            yield return null;
+        }
+
+        SpawnHitParticles(end, new Color(1f, 0.88f, 0.25f, 1f), 6, 0.38f);
+        Destroy(go);
+    }
+
+    IEnumerator RhythmCoreLinkRoutine(Vector3 core, Vector3 towerPos, Color color)
+    {
+        var linkColor = new Color(color.r, color.g, color.b, 0.82f);
+        var go = new GameObject("RhythmCoreLink");
+        go.transform.SetParent(_poolRoot);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = GreyboxSprites.Circle;
+        sr.color = linkColor;
+        sr.sortingOrder = 19;
+        go.transform.localScale = Vector3.one * 0.12f;
+
+        const float duration = 0.14f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            go.transform.position = Vector3.Lerp(core, towerPos, t);
+            sr.color = new Color(linkColor.r, linkColor.g, linkColor.b, linkColor.a * (1f - t));
+            yield return null;
+        }
+
+        Destroy(go);
+    }
+
+    IEnumerator RhythmSalvoProjectileRoutine(Vector3 from, Vector3 to, Color color)
+    {
+        var go = new GameObject("RhythmSalvoShot");
+        go.transform.SetParent(_poolRoot);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = GreyboxSprites.Circle;
+        sr.color = color;
+        sr.sortingOrder = 27;
+        go.transform.position = from;
+        go.transform.localScale = Vector3.one * 0.24f;
+
+        const float duration = 0.08f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            go.transform.position = Vector3.Lerp(from, to, t);
+            go.transform.localScale = Vector3.one * Mathf.Lerp(0.24f, 0.16f, t);
+            yield return null;
+        }
+
+        SpawnHitParticles(to, color, 8, 0.42f);
+        Destroy(go);
+    }
+
+    static Vector3 QuadraticBezier(Vector3 a, Vector3 b, Vector3 c, float t)
+    {
+        float u = 1f - t;
+        return u * u * a + 2f * u * t * b + t * t * c;
+    }
+
     public void PlayGoldSpendPopup(Vector3 worldPos, int gold)
     {
         var spendColor = new Color(1f, 0.42f, 0.35f, 1f);

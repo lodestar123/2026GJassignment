@@ -107,4 +107,25 @@ public class BeatTower : MonoBehaviour
         target.TakeDamage(damage);
         return true;
     }
+
+    /// <summary>Perfect 리듬 — 범위 밖이어도 연출, 적 있으면 데미지.</summary>
+    public bool FireRhythmPerfectSalvo(float damageOverride = -1f)
+    {
+        float damage = damageOverride >= 0f ? damageOverride : ActiveDamage;
+        var target = _tower.GetPathLeaderInRange();
+        Vector3 to = target != null
+            ? target.transform.position
+            : transform.position + Vector3.up * 2.4f;
+
+        CombatVfxService.Instance?.PlayRhythmSalvoShot(
+            transform.position, to, _tower.towerType, damage, transform);
+
+        if (target != null)
+        {
+            target.TakeDamage(damage);
+            return true;
+        }
+
+        return false;
+    }
 }

@@ -14,7 +14,9 @@ public class RhythmTimelineUI : MonoBehaviour
         public RectTransform Rect;
         public Image Image;
         public Color BaseColor;
+        public Vector2 BaseSize;
         public float SpawnTime;
+        public TapTimingQuality Quality;
     }
 
     static Sprite _runtimeMarkerSprite;
@@ -41,12 +43,31 @@ public class RhythmTimelineUI : MonoBehaviour
     [SerializeField, Min(0.05f)]
     float markerFadeSeconds = 0.55f;
 
+    [Header("Tap feedback")]
+    [SerializeField, Min(0.04f)]
+    float markerPulseSeconds = 0.14f;
+
+    [SerializeField, Range(1f, 2f)]
+    float markerPerfectPulseScale = 1.55f;
+
+    [SerializeField, Range(1f, 1.6f)]
+    float markerGoodPulseScale = 1.28f;
+
+    [SerializeField, Range(1f, 1.3f)]
+    float markerMissPulseScale = 1.05f;
+
+    [SerializeField]
+    bool playTapSound = true;
+
     readonly List<TapMarkerVisual> _activeMarkers = new();
     readonly List<Image> _guideLines = new();
     int _markerSequence;
     bool _subscribed;
     bool _selectorSubscribed;
     CommandType _lastGuideType = CommandType.None;
+    Image _playheadImage;
+    Color _playheadBaseColor = new(0.35f, 0.88f, 1f, 1f);
+    float _playheadFlashUntil;
 
     void Awake()
     {
@@ -104,12 +125,16 @@ public class RhythmTimelineUI : MonoBehaviour
 
         UpdatePlayhead();
         UpdateMarkerFade();
+        UpdatePlayheadFlash();
     }
 
     void ResolveReferences()
     {
         if (playhead == null)
             playhead = transform.Find("TrackArea/Playhead") as RectTransform;
+
+        if (_playheadImage == null && playhead != null)
+            _playheadImage = playhead.GetComponent<Image>();
 
         if (markersRoot == null)
             markersRoot = transform.Find("TrackArea/Markers") as RectTransform;
@@ -148,9 +173,12 @@ public class RhythmTimelineUI : MonoBehaviour
         if (playheadRt != null)
         {
             playheadRt.sizeDelta = playheadSize;
-            var playheadImg = playheadRt.GetComponent<Image>();
-            if (playheadImg != null)
-                playheadImg.color = new Color(0.35f, 0.88f, 1f, 1f);
+            _playheadImage = playheadRt.GetComponent<Image>();
+            if (_playheadImage != null)
+            {
+                _playheadBaseColor = new Color(0.35f, 0.88f, 1f, 1f);
+                _playheadImage.color = _playheadBaseColor;
+            }
         }
 
         _lastGuideType = CommandType.None;
@@ -189,8 +217,8 @@ public class RhythmTimelineUI : MonoBehaviour
         if (detector == null)
             return;
 
-        detector.OnTapVisualized -= OnTapVisualized;
-        detector.OnTapVisualized += OnTapVisualized;
+        detector.OnTapTimingFeedback -= OnTapTimingFeedback;
+        detector.OnTapTimingFeedback += OnTapTimingFeedback;
         _subscribed = true;
     }
 
@@ -198,7 +226,7 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         var detector = RhythmCommandDetector.Instance ?? FindAnyObjectByType<RhythmCommandDetector>();
         if (detector != null)
-            detector.OnTapVisualized -= OnTapVisualized;
+            detector.OnTapTimingFeedback -= OnTapTimingFeedback;
 
         _subscribed = false;
     }
@@ -319,7 +347,7 @@ public class RhythmTimelineUI : MonoBehaviour
         _ => new Color(0.75f, 0.75f, 0.75f, 1f)
     };
 
-    void OnTapVisualized(float adjustedSecondsInMeasure)
+    void OnTapTimingFeedback(float feltSecondsInMeasure, TapTimingQuality quality)
     {
         if (BeatClock.Instance == null || markersRoot == null)
             return;
@@ -328,7 +356,28 @@ public class RhythmTimelineUI : MonoBehaviour
         if (duration <= 0f)
             return;
 
-        AddMarker(FeltRelToAnchor(adjustedSecondsInMeasure, duration));
+        if (playTapSound && SimpleAudio.Instance != null)
+            SimpleAudio.Instance.PlayTapFeedback(quality);
+
+        if (quality == TapTimingQuality.Perfect)
+            _playheadFlashUntil = Time.time + 0.1f;
+
+        AddMarker(FeltRelToAnchor(feltSecondsInMeasure, duration), quality);
+    }
+
+    void UpdatePlayheadFlash()
+    {
+        if (_playheadImage == null)
+            return;
+
+        if (Time.time >= _playheadFlashUntil)
+        {
+            _playheadImage.color = _playheadBaseColor;
+            return;
+        }
+
+        float t = 1f - (_playheadFlashUntil - Time.time) / 0.1f;
+        _playheadImage.color = Color.Lerp(_playheadBaseColor, Color.white, t);
     }
 
     void UpdatePlayhead()
@@ -360,6 +409,19 @@ public class RhythmTimelineUI : MonoBehaviour
             }
 
             float age = now - marker.SpawnTime;
+
+            if (age < markerPulseSeconds)
+            {
+                float pulseT = age / markerPulseSeconds;
+                float peak = GetPulsePeakScale(marker.Quality);
+                float scale = Mathf.Lerp(peak, 1f, pulseT * pulseT);
+                marker.Rect.sizeDelta = marker.BaseSize * scale;
+            }
+            else if (marker.Rect.sizeDelta != marker.BaseSize)
+            {
+                marker.Rect.sizeDelta = marker.BaseSize;
+            }
+
             if (age <= markerHoldSeconds)
                 continue;
 
@@ -403,12 +465,30 @@ public class RhythmTimelineUI : MonoBehaviour
         return feltRel / duration;
     }
 
-    void AddMarker(float anchorX)
+    float GetPulsePeakScale(TapTimingQuality quality) => quality switch
+    {
+        TapTimingQuality.Perfect => markerPerfectPulseScale,
+        TapTimingQuality.Good => markerGoodPulseScale,
+        _ => markerMissPulseScale
+    };
+
+    static Color GetMarkerColor(TapTimingQuality quality) => quality switch
+    {
+        TapTimingQuality.Perfect => new Color(1f, 0.92f, 0.38f, 1f),
+        TapTimingQuality.Good => new Color(0.55f, 0.95f, 0.62f, 0.95f),
+        _ => new Color(1f, 0.42f, 0.38f, 0.88f)
+    };
+
+    void AddMarker(float anchorX, TapTimingQuality quality)
     {
         if (markersRoot == null)
             return;
 
-        var baseColor = new Color(1f, 0.82f, 0.35f, 1f);
+        var baseColor = GetMarkerColor(quality);
+        var size = quality == TapTimingQuality.Perfect
+            ? new Vector2(markerSize.x + 2f, markerSize.y + 6f)
+            : markerSize;
+
         _markerSequence++;
 
         var go = new GameObject($"TapMark_{_markerSequence}", typeof(RectTransform), typeof(Image));
@@ -420,7 +500,7 @@ public class RhythmTimelineUI : MonoBehaviour
         img.raycastTarget = false;
 
         var rt = go.GetComponent<RectTransform>();
-        SetAnchorPosition(rt, anchorX, markerSize);
+        SetAnchorPosition(rt, anchorX, size);
         rt.SetAsLastSibling();
 
         _activeMarkers.Add(new TapMarkerVisual
@@ -428,7 +508,9 @@ public class RhythmTimelineUI : MonoBehaviour
             Rect = rt,
             Image = img,
             BaseColor = baseColor,
-            SpawnTime = Time.time
+            BaseSize = size,
+            SpawnTime = Time.time,
+            Quality = quality
         });
     }
 

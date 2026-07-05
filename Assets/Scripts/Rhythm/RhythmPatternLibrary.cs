@@ -56,6 +56,53 @@ public static class RhythmPatternLibrary
     public static float GetJudgmentPerfect(float timeScale) => JudgmentPerfectSeconds * timeScale;
     public static float GetMinVisualTapGap(float timeScale) => MinVisualTapGapReference * timeScale;
 
+    /// <summary>마디 내 felt 시각 vs 패턴 슬롯 — 탭 즉시 피드백.</summary>
+    public static TapTimingQuality EvaluateTapInMeasure(
+        float feltSecondsInMeasure,
+        RhythmPattern pattern,
+        float measureDuration,
+        float timeScale,
+        int slotIndex)
+    {
+        if (pattern.TapCount <= 0 || measureDuration <= 0f)
+            return TapTimingQuality.Miss;
+
+        slotIndex = UnityEngine.Mathf.Clamp(slotIndex, 0, pattern.TapCount - 1);
+        float expected = pattern.GetExpectedHitTimes(measureDuration)[slotIndex];
+        return EvaluateDelta(UnityEngine.Mathf.Abs(feltSecondsInMeasure - expected), timeScale);
+    }
+
+    /// <summary>가장 가까운 가이드 슬롯 — 시퀀스 상태와 무관한 즉시 피드백용.</summary>
+    public static TapTimingQuality EvaluateTapNearestGuide(
+        float feltSecondsInMeasure,
+        RhythmPattern pattern,
+        float measureDuration,
+        float timeScale)
+    {
+        if (pattern.TapCount <= 0 || measureDuration <= 0f)
+            return TapTimingQuality.Miss;
+
+        var expected = pattern.GetExpectedHitTimes(measureDuration);
+        float bestDelta = float.MaxValue;
+        for (int i = 0; i < expected.Length; i++)
+        {
+            float delta = UnityEngine.Mathf.Abs(feltSecondsInMeasure - expected[i]);
+            if (delta < bestDelta)
+                bestDelta = delta;
+        }
+
+        return EvaluateDelta(bestDelta, timeScale);
+    }
+
+    public static TapTimingQuality EvaluateDelta(float absDelta, float timeScale)
+    {
+        if (absDelta <= GetJudgmentPerfect(timeScale))
+            return TapTimingQuality.Perfect;
+        if (absDelta <= GetJudgmentGood(timeScale))
+            return TapTimingQuality.Good;
+        return TapTimingQuality.Miss;
+    }
+
     public static string FormatPatternHint(CommandType type, float measureDuration)
     {
         if (!TryGetByType(type, out var pattern))

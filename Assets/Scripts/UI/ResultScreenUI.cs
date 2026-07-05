@@ -12,6 +12,8 @@ public class ResultScreenUI : MonoBehaviour
 
     [SerializeField] GameObject panelRoot;
     [SerializeField] TextMeshProUGUI titleText;
+    [SerializeField] TextMeshProUGUI rhythmHighlightText;
+    [SerializeField] TextMeshProUGUI metaText;
     [SerializeField] TextMeshProUGUI detailText;
     [SerializeField] Button restartButton;
     [SerializeField] Button titleButton;
@@ -61,6 +63,8 @@ public class ResultScreenUI : MonoBehaviour
         if (panelRoot == null)
             panelRoot = transform.Find("Panel")?.gameObject ?? gameObject;
 
+        EnsureExtraTexts();
+
         if (restartButton != null)
             restartButton.onClick.AddListener(() => PauseController.Instance?.RestartGame());
 
@@ -68,6 +72,77 @@ public class ResultScreenUI : MonoBehaviour
             titleButton.onClick.AddListener(() => PauseController.Instance?.GoToTitle());
 
         Subscribe();
+    }
+
+    void EnsureExtraTexts()
+    {
+        if (panelRoot == null)
+            return;
+
+        var panel = panelRoot.transform;
+
+        rhythmHighlightText ??= panel.Find("RhythmHighlight")?.GetComponent<TextMeshProUGUI>();
+        if (rhythmHighlightText == null)
+        {
+            rhythmHighlightText = CreatePanelText(
+                panel,
+                "RhythmHighlight",
+                new Vector2(0.5f, 0.54f),
+                new Vector2(900f, 72f),
+                52f,
+                FontStyles.Bold,
+                TextAlignmentOptions.Center);
+        }
+
+        metaText ??= panel.Find("Meta")?.GetComponent<TextMeshProUGUI>();
+        if (metaText == null)
+        {
+            metaText = CreatePanelText(
+                panel,
+                "Meta",
+                new Vector2(0.5f, 0.41f),
+                new Vector2(900f, 56f),
+                22f,
+                FontStyles.Normal,
+                TextAlignmentOptions.Center);
+            metaText.color = new Color(0.82f, 0.82f, 0.88f, 1f);
+        }
+
+        if (detailText != null)
+        {
+            var detailRt = detailText.rectTransform;
+            detailRt.anchorMin = new Vector2(0.5f, 0.28f);
+            detailRt.anchorMax = new Vector2(0.5f, 0.28f);
+            detailRt.sizeDelta = new Vector2(900f, 160f);
+        }
+    }
+
+    static TextMeshProUGUI CreatePanelText(
+        Transform panel,
+        string name,
+        Vector2 anchor,
+        Vector2 size,
+        float fontSize,
+        FontStyles style,
+        TextAlignmentOptions alignment)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(panel, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = Vector2.zero;
+
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.fontSize = fontSize;
+        tmp.fontStyle = style;
+        tmp.alignment = alignment;
+        tmp.richText = true;
+        tmp.raycastTarget = false;
+        BeatDefenderFonts.Apply(tmp);
+        return tmp;
     }
 
     void Subscribe()
@@ -95,31 +170,39 @@ public class ResultScreenUI : MonoBehaviour
 
     void ShowVictory()
     {
+        var stats = RunStats.Instance;
         var result = ScoreCalculator.Calculate(
-            RunStats.Instance,
+            stats,
             BaseHealth.Instance,
             GameManager.Instance,
             victory: true);
+        var meta = RunMetaProgress.RecordRun(stats, result);
 
         Show(
-            $"CLEAR - {result.TotalScore:N0} ({result.Grade})",
-            BuildDetail(result, GameManager.Instance, RunStats.Instance, BaseHealth.Instance));
+            $"CLEAR - {result.TotalScore:N0}  <size=80%><color=#FFD54F>GRADE {result.Grade}</color></size>",
+            BuildRhythmHighlight(result),
+            BuildMetaLine(meta),
+            BuildDetail(result, GameManager.Instance, stats, BaseHealth.Instance));
     }
 
     void ShowDefeat()
     {
+        var stats = RunStats.Instance;
         var result = ScoreCalculator.Calculate(
-            RunStats.Instance,
+            stats,
             BaseHealth.Instance,
             GameManager.Instance,
             victory: false);
+        var meta = RunMetaProgress.RecordRun(stats, result);
 
         Show(
-            $"GAME OVER - {result.TotalScore:N0} ({result.Grade})",
-            BuildDetail(result, GameManager.Instance, RunStats.Instance, BaseHealth.Instance));
+            $"GAME OVER - {result.TotalScore:N0}",
+            string.Empty,
+            BuildMetaLine(meta, includeCurrentRhythm: true, currentRhythm: result.RhythmAccuracyPercent),
+            BuildDetail(result, GameManager.Instance, stats, BaseHealth.Instance));
     }
 
-    void Show(string title, string detail)
+    void Show(string title, string rhythmHighlight, string meta, string detail)
     {
         if (!gameObject.activeSelf)
             gameObject.SetActive(true);
@@ -131,8 +214,19 @@ public class ResultScreenUI : MonoBehaviour
 
         if (titleText != null)
             titleText.text = title;
+
+        if (rhythmHighlightText != null)
+        {
+            rhythmHighlightText.gameObject.SetActive(!string.IsNullOrEmpty(rhythmHighlight));
+            rhythmHighlightText.text = rhythmHighlight;
+        }
+
+        if (metaText != null)
+            metaText.text = meta;
+
         if (detailText != null)
             detailText.text = detail;
+
         if (panelRoot != null)
             panelRoot.SetActive(true);
     }
@@ -141,6 +235,41 @@ public class ResultScreenUI : MonoBehaviour
     {
         if (panelRoot != null)
             panelRoot.SetActive(false);
+    }
+
+    static string BuildRhythmHighlight(ScoreCalculator.Result result)
+    {
+        if (result.RhythmAccuracyPercent <= 0)
+            return string.Empty;
+
+        string color = result.RhythmAccuracyPercent >= 85f ? "#FFD54F"
+            : result.RhythmAccuracyPercent >= 70f ? "#81D4FA"
+            : "#B0BEC5";
+
+        return $"<color={color}>Rhythm {result.RhythmAccuracyPercent}%</color>";
+    }
+
+    static string BuildMetaLine(
+        RunMetaProgress.RecordResult meta,
+        bool includeCurrentRhythm = false,
+        int currentRhythm = 0)
+    {
+        string scoreLine = meta.NewBestScore
+            ? $"<color=#FFD54F><b>NEW PB!</b></color> Score {meta.BestScore:N0}"
+            : $"Personal Best {meta.BestScore:N0}";
+
+        string rhythmLabel = meta.NewBestRhythm
+            ? $"<color=#FFD54F>Best Rhythm {meta.BestRhythmPercent}%</color>"
+            : $"Best Rhythm {meta.BestRhythmPercent}%";
+
+        if (includeCurrentRhythm && currentRhythm > 0)
+            rhythmLabel = $"Rhythm {currentRhythm}%  |  {rhythmLabel}";
+
+        string perfectLabel = meta.NewBestPerfect
+            ? $"<color=#FFD54F>Most Perfect {meta.BestPerfectCount}</color>"
+            : $"Most Perfect {meta.BestPerfectCount}";
+
+        return $"{scoreLine}\n{rhythmLabel}  |  {perfectLabel}";
     }
 
     static string BuildDetail(

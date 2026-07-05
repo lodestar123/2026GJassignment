@@ -9,10 +9,11 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
 {
     public static JudgmentEdgeFlashUI Instance { get; private set; }
 
-    [SerializeField] float judgmentFlashSeconds = 0.48f;
+    [SerializeField] float judgmentFlashSeconds = 0.62f;
     [SerializeField] float goodFlashSeconds = 0.4f;
     [SerializeField] float feverFlashSeconds = 0.55f;
-    [SerializeField] float edgeThickness = 14f;
+    [SerializeField] float edgeThickness = 18f;
+    [SerializeField] float perfectEdgeThickness = 26f;
     [SerializeField] float fadeInPortion = 0.18f;
 
     Image _top;
@@ -23,9 +24,10 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
     float _flashTimer;
     float _flashDuration;
     Color _flashColor = Color.clear;
+    float _activeEdgeThickness;
     bool _subscribed;
 
-    static readonly Color PerfectColor = new(1f, 0.84f, 0.31f, 0.58f);
+    static readonly Color PerfectColor = new(1f, 0.9f, 0.35f, 0.78f);
     static readonly Color GoodColor = new(0.65f, 0.93f, 0.65f, 0.48f);
     static readonly Color MissColor = new(0.94f, 0.33f, 0.31f, 0.52f);
     static readonly Color FeverColor = new(1f, 0.55f, 0.12f, 0.38f);
@@ -158,7 +160,7 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
         switch (judgment)
         {
             case JudgmentResult.Perfect:
-                TriggerFlash(PerfectColor, judgmentFlashSeconds);
+                TriggerFlash(PerfectColor, judgmentFlashSeconds, perfectEdgeThickness);
                 break;
             case JudgmentResult.Good:
                 TriggerFlash(GoodColor, goodFlashSeconds);
@@ -176,11 +178,21 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
         TriggerFlash(FeverColor, feverFlashSeconds);
     }
 
-    void TriggerFlash(Color color, float duration)
+    void TriggerFlash(Color color, float duration, float thicknessOverride = -1f)
     {
         _flashColor = color;
         _flashDuration = Mathf.Max(0.1f, duration);
         _flashTimer = _flashDuration;
+        _activeEdgeThickness = thicknessOverride > 0f ? thicknessOverride : edgeThickness;
+        ApplyEdgeThickness(_activeEdgeThickness);
+    }
+
+    void ApplyEdgeThickness(float thickness)
+    {
+        if (_top != null) _top.rectTransform.sizeDelta = new Vector2(0f, thickness);
+        if (_bottom != null) _bottom.rectTransform.sizeDelta = new Vector2(0f, thickness);
+        if (_left != null) _left.rectTransform.sizeDelta = new Vector2(thickness, 0f);
+        if (_right != null) _right.rectTransform.sizeDelta = new Vector2(thickness, 0f);
     }
 
     static float SmoothStep(float t) => t * t * (3f - 2f * t);
@@ -218,6 +230,7 @@ public class JudgmentEdgeFlashUI : MonoBehaviour
         }
 
         ApplyEdgeColor(Color.clear);
+        ApplyEdgeThickness(edgeThickness);
     }
 
     void ApplyEdgeColor(Color color)

@@ -79,6 +79,9 @@ public class TowerPlacer : MonoBehaviour
 
         if (cell.Occupant != null)
         {
+            if (cell.Occupant.towerType == selected)
+                return;
+
             RefundSell(cell.Occupant);
             RemoveTower(cell.Occupant, cell);
         }

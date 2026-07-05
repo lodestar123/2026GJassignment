@@ -91,6 +91,22 @@ public class SimpleAudio : MonoBehaviour
         _rhythmVolumeMultiplier = Mathf.Clamp01(multiplier);
     }
 
+    public void PlayTapFeedback(TapTimingQuality quality)
+    {
+        switch (quality)
+        {
+            case TapTimingQuality.Perfect:
+                PlayBeep(1760f, 0.032f, sfxVolume * 0.5f, 1.08f);
+                break;
+            case TapTimingQuality.Good:
+                PlayBeep(1180f, 0.026f, sfxVolume * 0.34f, 1f);
+                break;
+            default:
+                PlayBeep(260f, 0.038f, sfxVolume * 0.26f, 0.88f);
+                break;
+        }
+    }
+
     public void PlayJudgment(JudgmentResult result)
     {
         switch (result)

@@ -26,82 +26,117 @@ public class CommandEffectController : MonoBehaviour
         switch (type)
         {
             case CommandType.GoldPulse:
-                ApplyGoldPulse();
+                ApplyGoldPulse(judgment);
                 break;
             case CommandType.RhythmShot:
-                ApplyRhythmShot();
+                ApplyRhythmShot(judgment);
                 break;
             case CommandType.OverloadStrike:
-                ApplyOverloadStrike();
+                ApplyOverloadStrike(judgment);
                 break;
             case CommandType.ChainZap:
-                ApplyChainZap();
+                ApplyChainZap(judgment);
                 break;
             case CommandType.TempoUp:
-                ApplyTempoUp();
+                ApplyTempoUp(judgment);
                 break;
             case CommandType.TempoDown:
-                ApplyTempoDown();
+                ApplyTempoDown(judgment);
                 break;
         }
     }
 
-    void ApplyTempoUp()
+    void ApplyTempoUp(JudgmentResult judgment)
     {
         TempoController.Instance?.AddFastStack();
         SimpleAudio.Instance?.PlaySkill(CommandType.TempoUp);
+        if (judgment == JudgmentResult.Perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.TempoUp, 0, _towers);
         var tempo = TempoController.Instance;
         Debug.Log($"[Rhythm] TempoUp — fast {tempo?.FastStacks}/{TempoController.MaxStacksPerDirection}, scale {tempo?.CurrentScale:0.##}");
     }
 
-    void ApplyTempoDown()
+    void ApplyTempoDown(JudgmentResult judgment)
     {
         TempoController.Instance?.AddSlowStack();
         SimpleAudio.Instance?.PlaySkill(CommandType.TempoDown);
+        if (judgment == JudgmentResult.Perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.TempoDown, 0, _towers);
         var tempo = TempoController.Instance;
         Debug.Log($"[Rhythm] TempoDown — slow {tempo?.SlowStacks}/{TempoController.MaxStacksPerDirection}, scale {tempo?.CurrentScale:0.##}");
     }
 
-    void ApplyGoldPulse()
+    void ApplyGoldPulse(JudgmentResult judgment)
     {
         if (ResourceManager.Instance == null)
             return;
 
-        ResourceManager.Instance.AddGold(ResourceManager.GoldPulseReward);
-        var hudPos = Camera.main != null
-            ? Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.88f, 10f))
-            : Vector3.zero;
-        CombatVfxService.Instance?.PlayGoldPulsePopup(hudPos, ResourceManager.GoldPulseReward);
+        int reward = JudgmentRewards.ScaleGoldPulseReward(judgment);
+        ResourceManager.Instance.AddGold(reward);
+        bool perfect = judgment == JudgmentResult.Perfect;
+
+        if (!perfect)
+        {
+            var hudPos = Camera.main != null
+                ? Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.88f, 10f))
+                : Vector3.zero;
+            CombatVfxService.Instance?.PlayGoldPulsePopup(hudPos, reward);
+        }
 
         int fired = 0;
         if (_towers != null)
         {
             foreach (var beatTower in _towers.BeatTowers)
             {
-                if (beatTower.FireOnce(beatTower.FallbackDamage))
+                if (perfect)
+                {
+                    beatTower.FireRhythmPerfectSalvo(beatTower.FallbackDamage);
                     fired++;
+                }
+                else if (beatTower.FireOnce(beatTower.FallbackDamage))
+                {
+                    fired++;
+                }
             }
         }
 
-        Debug.Log($"[Rhythm] GoldPulse +{ResourceManager.GoldPulseReward}G, BeatTower {fired}기 Fallback 사격 (총 {ResourceManager.Instance.Gold}G)");
+        if (perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.GoldPulse, reward, _towers);
+
+        Debug.Log($"[Rhythm] GoldPulse +{reward}G ({judgment}), BeatTower {fired}기 {(perfect ? "Perfect" : "Fallback")} 사격 (총 {ResourceManager.Instance.Gold}G)");
     }
 
-    void ApplyRhythmShot()
+    void ApplyRhythmShot(JudgmentResult judgment)
     {
         if (_towers == null)
             return;
 
+        bool perfect = judgment == JudgmentResult.Perfect;
         int fired = 0;
         foreach (var beatTower in _towers.BeatTowers)
         {
-            if (beatTower.FireOnce())
+            float damage = JudgmentRewards.ScaleRhythmShotDamage(beatTower.ActiveDamage, judgment);
+            if (perfect)
+            {
+                beatTower.FireRhythmPerfectSalvo(damage);
                 fired++;
+            }
+            else if (beatTower.FireOnce(damage))
+            {
+                fired++;
+            }
         }
 
-        Debug.Log($"[Rhythm] RhythmShot — BeatTower {fired}기 즉시 사격 (Lv별 ActiveDamage)");
+        if (perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.RhythmShot, 0, _towers);
+
+        string bonus = perfect
+            ? $" x{JudgmentRewards.PerfectRhythmShotDamageMultiplier:0.##}"
+            : string.Empty;
+        Debug.Log($"[Rhythm] RhythmShot — BeatTower {fired}기 즉시 사격{bonus} ({judgment})");
     }
 
-    void ApplyOverloadStrike()
+    void ApplyOverloadStrike(JudgmentResult judgment)
     {
         if (_towers == null || _towers.StrikeTowers.Count == 0)
         {
@@ -124,10 +159,13 @@ public class CommandEffectController : MonoBehaviour
         foreach (var enemy in hit)
             enemy.TakeDamage(OverloadStrikeDamage);
 
+        if (judgment == JudgmentResult.Perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.OverloadStrike, 0, _towers);
+
         Debug.Log($"[Rhythm] OverloadStrike — {hit.Count}적 × {OverloadStrikeDamage} dmg");
     }
 
-    void ApplyChainZap()
+    void ApplyChainZap(JudgmentResult judgment)
     {
         if (_towers == null || _towers.BoostTowers.Count == 0)
         {
@@ -166,6 +204,8 @@ public class CommandEffectController : MonoBehaviour
         }
 
         SimpleAudio.Instance?.PlaySkill(CommandType.ChainZap);
+        if (judgment == JudgmentResult.Perfect)
+            CombatVfxService.Instance?.PlayRhythmPerfectSuccess(CommandType.ChainZap, 0, _towers);
         Debug.Log($"[Rhythm] ChainZap — 선두 {primaryHits} × {ChainZapPrimaryDamage}, 체인 {linkHits} × {ChainZapLinkDamage}");
     }
 

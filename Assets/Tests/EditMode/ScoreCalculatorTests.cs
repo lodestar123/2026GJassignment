@@ -29,6 +29,13 @@ public class ScoreCalculatorTests
     }
 
     [Test]
+    public void RhythmAccuracy_UsesPerfectAndGoodWeights()
+    {
+        int rhythm = ScoreCalculator.ComputeRhythmAccuracyPercent(38, 22, 0);
+        Assert.AreEqual(82, rhythm);
+    }
+
+    [Test]
     public void DefeatScore_UsesGradeD()
     {
         var result = ScoreCalculator.Calculate(null, null, null, victory: false);

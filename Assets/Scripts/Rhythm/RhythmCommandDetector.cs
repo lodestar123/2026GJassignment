@@ -12,10 +12,12 @@ public class RhythmCommandDetector : MonoBehaviour
     public static RhythmCommandDetector Instance { get; private set; }
 
     public event Action<CommandType, JudgmentResult> OnCommandResolved;
-    /// <summary>offset 적용 마디 내 초 — 타임라인 시각화 전용.</summary>
-    public event Action<float> OnTapVisualized;
+    /// <summary>offset felt 마디 내 초 + 즉시 타이밍 품질.</summary>
+    public event Action<float, TapTimingQuality> OnTapTimingFeedback;
 
     public int CurrentTapCount => _seqOpen ? _seqTaps.Count : 0;
+
+    float _inputStunUntil;
 
     readonly List<float> _seqTaps = new();
     float _seqAnchor;
@@ -81,10 +83,13 @@ public class RhythmCommandDetector : MonoBehaviour
         if (Time.timeScale <= 0f)
             return;
 
+        if (Time.time < _inputStunUntil)
+            return;
+
         if (RhythmKeyFilter.TryGetRhythmKeysDown(_frameKeys) > 0)
         {
             float rawTime = Time.time;
-            VisualizeTap(rawTime);
+            EmitTapFeedback(rawTime);
             RegisterTap(rawTime);
         }
 
@@ -119,15 +124,21 @@ public class RhythmCommandDetector : MonoBehaviour
         return rawTime - RhythmInputSettings.DefaultInputOffsetSeconds;
     }
 
-    void VisualizeTap(float rawTime)
+    void EmitTapFeedback(float rawTime)
     {
-        if (BeatClock.Instance == null)
+        if (BeatClock.Instance == null || !TryGetSelectedPattern(out var pattern))
             return;
 
-        float rel = RhythmInputSettings.GetFeltElapsedInMeasure(
+        float felt = RhythmInputSettings.GetFeltElapsedInMeasure(
             rawTime,
             BeatClock.Instance.MeasureStartTime);
-        OnTapVisualized?.Invoke(rel);
+        float duration = BeatClock.Instance.EffectiveMeasureDuration;
+        float scale = BeatClock.Instance.PatternTimeScale;
+
+        var quality = RhythmPatternLibrary.EvaluateTapNearestGuide(
+            felt, pattern, duration, scale);
+
+        OnTapTimingFeedback?.Invoke(felt, quality);
     }
 
     void RegisterTap(float rawTime)
@@ -279,6 +290,9 @@ public class RhythmCommandDetector : MonoBehaviour
 
         _stats?.RecordJudgment(judgment);
         OnCommandResolved?.Invoke(type, judgment);
+
+        if (judgment == JudgmentResult.Miss)
+            _inputStunUntil = Time.time + JudgmentRewards.MissInputStunSeconds;
 
         if (type == CommandType.None && judgment == JudgmentResult.Miss)
             Debug.Log($"[Rhythm] MISS — {GetSelectedType()} / {tapCount} taps [{FormatTaps(_evalSnapshot)}]");

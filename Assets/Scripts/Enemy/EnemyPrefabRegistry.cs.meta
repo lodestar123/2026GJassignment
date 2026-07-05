@@ -6,7 +6,7 @@ MonoImporter:
   defaultReferences:
   - eighthNote: {fileID: 280490415929433642, guid: 803337a51333d844397209b175bc72b4, type: 3}
   - downbeat: {fileID: 6992570619773469441, guid: e159c024646c51d4c87f22d4bebcee4e, type: 3}
-  - elite: {instanceID: 0}
+  - elite: {fileID: 3528121847425922524, guid: 0d0f0e78ab9a4ff499968f4a36735910, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

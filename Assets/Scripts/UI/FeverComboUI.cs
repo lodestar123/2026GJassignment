@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// PERFECT 연속 콤보 — 피버(16) 진행도를 큰 숫자로 표시.
+/// PERFECT 연속 콤보 — 피버(8) 진행도를 큰 숫자로 표시.
 /// </summary>
 public class FeverComboUI : MonoBehaviour
 {
@@ -19,7 +19,7 @@ public class FeverComboUI : MonoBehaviour
     const float RestOffsetY = 0f;
 
     RectTransform _root;
-    int _streak;
+    float _streak;
     int _required = FeverTimeController.RequiredPerfectStreak;
     Coroutine _pulseRoutine;
     Coroutine _breakRoutine;
@@ -175,14 +175,14 @@ public class FeverComboUI : MonoBehaviour
         progressFill.raycastTarget = false;
     }
 
-    void HandleStreakChanged(int streak, int required)
+    void HandleStreakChanged(float streak, int required)
     {
-        int previous = _streak;
+        float previous = _streak;
         _streak = streak;
         _required = Mathf.Max(1, required);
-        RefreshDisplay(streak > previous);
+        RefreshDisplay(streak > previous + 0.001f);
 
-        if (streak == 0 && previous > 0)
+        if (streak <= 0f && previous > 0f)
             PlayBreakFeedback();
     }
 
@@ -191,8 +191,8 @@ public class FeverComboUI : MonoBehaviour
         if (comboValueText == null)
             return;
 
-        comboValueText.text = _streak.ToString();
-        float t = _required > 0 ? (float)_streak / _required : 0f;
+        comboValueText.text = FormatStreak(_streak);
+        float t = _required > 0 ? _streak / _required : 0f;
         if (progressFill != null)
             progressFill.fillAmount = Mathf.Clamp01(t);
 
@@ -200,11 +200,11 @@ public class FeverComboUI : MonoBehaviour
         var warm = new Color(1f, 0.78f, 0.35f);
         var idle = new Color(0.75f, 0.75f, 0.82f);
         comboValueText.color = _streak >= _required * 0.75f ? hot
-            : _streak > 0 ? warm
+            : _streak > 0f ? warm
             : idle;
 
         if (comboLabelText != null)
-            comboLabelText.text = _streak > 0 ? $"COMBO / {_required}" : "PERFECT";
+            comboLabelText.text = _streak > 0f ? $"COMBO / {_required}" : "PERFECT";
 
         if (increased)
             PlayIncrementPulse();
@@ -266,5 +266,16 @@ public class FeverComboUI : MonoBehaviour
         _root.anchoredPosition = new Vector2(RestOffsetX, RestOffsetY);
         RefreshDisplay(false);
         _breakRoutine = null;
+    }
+
+    static string FormatStreak(float streak)
+    {
+        if (streak <= 0f)
+            return "0";
+
+        float frac = streak - Mathf.Floor(streak);
+        return frac < 0.05f || frac > 0.95f
+            ? Mathf.RoundToInt(streak).ToString()
+            : streak.ToString("0.#");
     }
 }

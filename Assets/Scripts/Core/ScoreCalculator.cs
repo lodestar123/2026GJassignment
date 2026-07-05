@@ -8,11 +8,25 @@ public static class ScoreCalculator
         public bool Cleared;
         public int TotalScore;
         public string Grade;
+        public int RhythmAccuracyPercent;
         public int SurvivalBonus;
         public int DefenseBonus;
         public int CombatBonus;
         public int RhythmBonus;
         public int TimeBonus;
+    }
+
+    public static int ComputeRhythmAccuracyPercent(int perfect, int good, int miss)
+    {
+        int total = perfect + good + miss;
+        if (total <= 0)
+            return 0;
+
+        int weighted = perfect * 100 + good * 50;
+        return UnityEngine.Mathf.Clamp(
+            UnityEngine.Mathf.RoundToInt((float)weighted / total),
+            0,
+            100);
     }
 
     public static Result Calculate(RunStats stats, BaseHealth core, GameManager game, bool victory)
@@ -27,6 +41,7 @@ public static class ScoreCalculator
         int perfect = stats != null ? stats.PerfectCount : 0;
         int good = stats != null ? stats.GoodCount : 0;
         int miss = stats != null ? stats.MissCount : 0;
+        int rhythmPercent = ComputeRhythmAccuracyPercent(perfect, good, miss);
 
         int combat = eighthKills * 80 + downbeatKills * 200 + eliteKills * 320;
         int rhythm = perfect * 15 + good * 5;
@@ -42,6 +57,7 @@ public static class ScoreCalculator
                 Cleared = true,
                 TotalScore = total,
                 Grade = GradeFromScore(total, true),
+                RhythmAccuracyPercent = rhythmPercent,
                 SurvivalBonus = survival,
                 DefenseBonus = defense,
                 CombatBonus = combat,
@@ -57,6 +73,7 @@ public static class ScoreCalculator
             Cleared = false,
             TotalScore = defeatTotal,
             Grade = "D",
+            RhythmAccuracyPercent = rhythmPercent,
             SurvivalBonus = 0,
             DefenseBonus = 0,
             CombatBonus = combat,
