@@ -26,8 +26,9 @@ public class RhythmTimelineUI : MonoBehaviour
     [SerializeField] RectTransform guidesRoot;
     [SerializeField] Vector2 playheadSize = new(5f, 34f);
     [SerializeField] Vector2 markerSize = new(5f, 30f);
-    [SerializeField] Vector2 guideSize = new(4f, 32f);
-    [SerializeField, Range(0.15f, 0.95f)] float guideAlpha = 0.78f;
+    [SerializeField] Vector2 guideSize = new(6f, 38f);
+    [SerializeField, Range(0.15f, 0.95f)] float guideAlpha = 0.92f;
+    [SerializeField, Range(0.1f, 0.6f)] float guideGlowAlpha = 0.38f;
 
     [Header("Mark range (--|---|--)")]
     [SerializeField, Range(0.02f, 0.25f)]
@@ -154,8 +155,9 @@ public class RhythmTimelineUI : MonoBehaviour
     {
         playheadSize = new Vector2(5f, 34f);
         markerSize = new Vector2(5f, 30f);
-        guideSize = new Vector2(4f, 32f);
-        guideAlpha = 0.78f;
+        guideSize = new Vector2(6f, 38f);
+        guideAlpha = 0.92f;
+        guideGlowAlpha = 0.38f;
 
         var root = GetComponent<RectTransform>();
         if (root != null)
@@ -309,20 +311,39 @@ public class RhythmTimelineUI : MonoBehaviour
 
     void CreateGuideLine(float fractionInMeasure, Color color, bool emphasize)
     {
-        var go = new GameObject($"Guide_{fractionInMeasure:0.###}", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(guidesRoot, false);
-
-        var img = go.GetComponent<Image>();
-        img.sprite = GetMarkerSprite();
-        img.color = color;
-        img.raycastTarget = false;
+        var root = new GameObject($"Guide_{fractionInMeasure:0.###}", typeof(RectTransform));
+        root.transform.SetParent(guidesRoot, false);
 
         var size = emphasize
-            ? new Vector2(guideSize.x + 1f, guideSize.y + 2f)
+            ? new Vector2(guideSize.x + 2f, guideSize.y + 4f)
             : guideSize;
-        var rt = go.GetComponent<RectTransform>();
+
+        var glow = CreateGuideBar(root.transform, "Glow", size * new Vector2(1.75f, 1.2f));
+        var glowColor = color;
+        glowColor.a = guideGlowAlpha;
+        glow.color = glowColor;
+
+        var bar = CreateGuideBar(root.transform, "Bar", size);
+        bar.color = color;
+
+        var rt = root.GetComponent<RectTransform>();
         SetAnchorPosition(rt, fractionInMeasure, size);
-        _guideLines.Add(img);
+        _guideLines.Add(bar);
+    }
+
+    static Image CreateGuideBar(Transform parent, string name, Vector2 size)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        var img = go.GetComponent<Image>();
+        img.sprite = GetMarkerSprite();
+        img.raycastTarget = false;
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = Vector2.zero;
+        return img;
     }
 
     void ClearGuides()
@@ -331,10 +352,13 @@ public class RhythmTimelineUI : MonoBehaviour
         {
             if (_guideLines[i] != null)
             {
+                var root = _guideLines[i].transform.parent != null
+                    ? _guideLines[i].transform.parent.gameObject
+                    : _guideLines[i].gameObject;
                 if (Application.isPlaying)
-                    Destroy(_guideLines[i].gameObject);
+                    Destroy(root);
                 else
-                    DestroyImmediate(_guideLines[i].gameObject);
+                    DestroyImmediate(root);
             }
         }
 

@@ -9,9 +9,9 @@
 
 | 씬 | 파일 | 역할 |
 |----|------|------|
-| **StartScene** | `StartScene.unity` | 타이틀 · 게임 · **연습** |
+| **StartScene** | `StartScene.unity` | 타이틀 · 게임 · **튜토리얼** |
 | **GameScene** | `GameScene.unity` | **2분** 본편 · Pause · 결과 |
-| **PracticeScene** | `PracticeScene.unity` | 4패턴 연습 전용 |
+| **TutorialScene** | `TutorialScene.unity` | 단계별 가이드 · 리듬 연습 |
 
 ---
 
@@ -21,13 +21,12 @@
 stateDiagram-v2
     direction TB
     StartScene --> GameScene: 게임 시작
-    StartScene --> PracticeScene: 박자 연습
-    PracticeScene --> StartScene: 나가기
+    StartScene --> TutorialScene: 튜토리얼
+    TutorialScene --> StartScene: 나가기/건너뛰기
+    TutorialScene --> GameScene: 튜토리얼 완료
     GameScene --> Playing: 로드
     Playing --> Paused: ESC
     Paused --> Playing: 계속
-    Paused --> PracticeScene: 연습 Additive
-    PracticeScene --> Paused: 닫기 Unload
     Paused --> StartScene: 타이틀
     Paused --> Playing: 재시작
     Playing --> Victory: 120s
@@ -43,7 +42,7 @@ stateDiagram-v2
 | UI | 동작 |
 |----|------|
 | **게임 시작** | → GameScene |
-| **박자 연습** | → PracticeScene |
+| **튜토리얼** | → TutorialScene |
 | **종료** | Quit |
 
 ---
@@ -68,29 +67,22 @@ stateDiagram-v2
 
 ### Pause 패널
 
-계속 · 재시작 · **박자 연습** · 설정 · 시작 화면
+계속 · 재시작 · 설정 · 시작 화면
 
 ---
 
-## 6. PracticeScene
+## 6. TutorialScene
 
 ### StartScene에서
 
-- 단독 로드 · **나가기** → StartScene
+- 단독 로드 · **나가기/건너뛰기** → StartScene
+- **완료** → GameScene
 
-### Pause에서 (권장)
+### 내용
 
-- **Additive Load** `PracticeScene`
-- GameScene `timeScale=0` 유지
-- **닫기** → Unload PracticeScene → **Pause 복귀**
-
-### MVP 대안
-
-- Additive 구현 부담 시: Pause 연습 → Practice 단독 로드 → 종료 시 **GameScene 재시작** (확인 다이얼로그)
-
-### Practice 내용
-
-- Rail + Scroll 4패턴 · ms 오차 · 쿨 비활성 · 적 없음
+- 10단계 순차 가이드 (리듬 → 패턴 → 타워 → 승리 조건)
+- Rail + Scroll · CD 비활성 · 적 없음
+- 상세: [TUTORIAL.md](./TUTORIAL.md)
 
 ---
 

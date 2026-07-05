@@ -11,7 +11,6 @@ public class PauseController : MonoBehaviour
     public static PauseController Instance { get; private set; }
 
     public bool IsPaused { get; private set; }
-    public bool IsPracticeOverlayActive { get; private set; }
 
     public event Action<bool> OnPauseChanged;
 
@@ -40,9 +39,6 @@ public class PauseController : MonoBehaviour
             return;
 
         if (ResultScreenUI.Instance != null && ResultScreenUI.Instance.IsVisible)
-            return;
-
-        if (IsPracticeOverlayActive)
             return;
 
         if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
@@ -99,24 +95,6 @@ public class PauseController : MonoBehaviour
     public void GoToTitle()
     {
         Time.timeScale = 1f;
-        IsPracticeOverlayActive = false;
         SceneManager.LoadScene(SceneNames.Start);
-    }
-
-    public void SetPracticeOverlayActive(bool active)
-    {
-        IsPracticeOverlayActive = active;
-        if (active)
-        {
-            SettingsPanelUI.Resolve()?.HidePanelOnly();
-            PauseMenuUI.Resolve()?.Hide();
-            Time.timeScale = 1f;
-            SimpleAudio.Instance?.SetRhythmVolumeMultiplier(1f);
-        }
-        else if (IsPaused)
-        {
-            Time.timeScale = 0f;
-            SimpleAudio.Instance?.SetRhythmVolumeMultiplier(0.4f);
-        }
     }
 }

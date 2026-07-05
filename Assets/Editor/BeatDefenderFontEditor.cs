@@ -26,7 +26,7 @@ public static class BeatDefenderFontEditor
         {
             "Assets/Scenes/StartScene.unity",
             "Assets/Scenes/GameScene.unity",
-            "Assets/Scenes/PracticeScene.unity"
+            "Assets/Scenes/TutorialScene.unity"
         };
 
         var previousScene = SceneManager.GetActiveScene().path;

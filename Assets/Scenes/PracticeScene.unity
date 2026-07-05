@@ -2621,8 +2621,9 @@ MonoBehaviour:
   guidesRoot: {fileID: 1251436072}
   playheadSize: {x: 5, y: 34}
   markerSize: {x: 5, y: 30}
-  guideSize: {x: 4, y: 32}
-  guideAlpha: 0.78
+  guideSize: {x: 6, y: 38}
+  guideAlpha: 0.92
+  guideGlowAlpha: 0.38
   markerSideExtend: 0.1
   markerEarlyLateReference: 0.22
   markerHoldSeconds: 0.65

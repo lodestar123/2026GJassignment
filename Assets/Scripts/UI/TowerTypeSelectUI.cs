@@ -22,6 +22,13 @@ public class TowerTypeSelectUI : MonoBehaviour
 
     ResourceManager _resources;
 
+    public void SetTowerButtons(TowerButton[] buttons)
+    {
+        towerButtons = buttons;
+        EnsureMouseOnlyControls();
+        Refresh();
+    }
+
     void Awake()
     {
         _resources = FindAnyObjectByType<ResourceManager>();

@@ -21,7 +21,7 @@ static class FeverTimeBootstrap
             return;
 
         var name = scene.name;
-        if (name != SceneNames.Game && name != SceneNames.Practice)
+        if (name != SceneNames.Game && name != SceneNames.Tutorial)
             return;
 
         foreach (var root in scene.GetRootGameObjects())

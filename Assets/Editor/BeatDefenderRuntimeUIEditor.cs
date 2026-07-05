@@ -7,17 +7,17 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Play 시 자동 생성되던 UI를 씬에 미리 배치.
-/// PracticeScene은 GameScene 리듬 UI와 동기화.
+/// TutorialScene은 GameScene 리듬 UI와 동기화.
 /// </summary>
 public static class BeatDefenderRuntimeUIEditor
 {
     const string GameScenePath = "Assets/Scenes/GameScene.unity";
-    const string PracticeScenePath = "Assets/Scenes/PracticeScene.unity";
+    const string TutorialScenePath = "Assets/Scenes/TutorialScene.unity";
 
     static readonly string[] ScenePaths =
     {
         GameScenePath,
-        PracticeScenePath
+        TutorialScenePath
     };
 
     [MenuItem("Beat Defender/Ensure Runtime UI In Scenes")]
@@ -41,19 +41,19 @@ public static class BeatDefenderRuntimeUIEditor
         Debug.Log($"Beat Defender: Runtime UI ensured in {count} scene(s). Hierarchy에서 위치·크기를 편집하세요.");
     }
 
-    [MenuItem("Beat Defender/Sync Practice UI From Game")]
-    public static void SyncPracticeUiFromGameMenu()
+    [MenuItem("Beat Defender/Sync Tutorial UI From Game")]
+    public static void SyncTutorialUiFromGameMenu()
     {
         var previous = SceneManager.GetActiveScene().path;
 
-        if (!File.Exists(GameScenePath) || !File.Exists(PracticeScenePath))
+        if (!File.Exists(GameScenePath) || !File.Exists(TutorialScenePath))
         {
-            Debug.LogWarning("Beat Defender: GameScene 또는 PracticeScene을 찾을 수 없습니다.");
+            Debug.LogWarning("Beat Defender: GameScene 또는 TutorialScene을 찾을 수 없습니다.");
             return;
         }
 
-        if (SyncPracticeUiFromGame())
-            Debug.Log("Beat Defender: Practice UI를 GameScene 리듬 UI와 동기화했습니다.");
+        if (SyncTutorialUiFromGame())
+            Debug.Log("Beat Defender: Tutorial UI를 GameScene 리듬 UI와 동기화했습니다.");
 
         if (!string.IsNullOrEmpty(previous) && File.Exists(previous))
             EditorSceneManager.OpenScene(previous, OpenSceneMode.Single);
@@ -61,8 +61,8 @@ public static class BeatDefenderRuntimeUIEditor
 
     static bool EnsureScene(string scenePath)
     {
-        if (scenePath == PracticeScenePath)
-            return SyncPracticeUiFromGame();
+        if (scenePath == TutorialScenePath)
+            return SyncTutorialUiFromGame();
 
         var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
         var root = FindGameplayCanvasRoot(scene);
@@ -87,13 +87,13 @@ public static class BeatDefenderRuntimeUIEditor
         return true;
     }
 
-    static bool SyncPracticeUiFromGame()
+    static bool SyncTutorialUiFromGame()
     {
-        var practiceScene = EditorSceneManager.OpenScene(PracticeScenePath, OpenSceneMode.Single);
-        var practiceRoot = FindGameplayCanvasRoot(practiceScene);
-        if (practiceRoot == null)
+        var tutorialScene = EditorSceneManager.OpenScene(TutorialScenePath, OpenSceneMode.Single);
+        var tutorialRoot = FindGameplayCanvasRoot(tutorialScene);
+        if (tutorialRoot == null)
         {
-            Debug.LogWarning("Beat Defender: PracticeScene Canvas not found");
+            Debug.LogWarning("Beat Defender: TutorialScene Canvas not found");
             return false;
         }
 
@@ -109,27 +109,31 @@ public static class BeatDefenderRuntimeUIEditor
         try
         {
             RemoveLegacyObjects();
+            TutorialSceneEditor.MigrateSceneContents(tutorialScene);
 
-            CopyRhythmWidget<JudgmentFlashUI>(gameRoot, practiceRoot);
-            CopyRhythmWidget<RhythmScrollUI>(gameRoot, practiceRoot);
-            CopyRhythmWidget<RhythmTimelineUI>(gameRoot, practiceRoot);
+            CopyRhythmWidget<JudgmentFlashUI>(gameRoot, tutorialRoot);
+            CopyRhythmWidget<RhythmScrollUI>(gameRoot, tutorialRoot);
+            CopyRhythmWidget<RhythmTimelineUI>(gameRoot, tutorialRoot);
 
-            DestroyComponentInChildren<PlacementSlotTooltipUI>(practiceRoot);
+            DestroyComponentInChildren<PlacementSlotTooltipUI>(tutorialRoot);
 
-            PlaceUi<JudgmentEdgeFlashUI>(practiceRoot, "JudgmentEdgeFlashUI", 0);
-            PlaceUi<PracticeHudUI>(practiceRoot, "PracticeHud", 1);
-            PlaceUi<FeverComboUI>(practiceRoot, "FeverComboUI", -1);
-            PlaceUi<FeverBurstUI>(practiceRoot, "FeverBurstUI", -1);
+            PlaceUi<JudgmentEdgeFlashUI>(tutorialRoot, "JudgmentEdgeFlashUI", 0);
+            PlaceUi<TutorialHudUI>(tutorialRoot, "TutorialHud", 1);
+            PlaceUi<FeverComboUI>(tutorialRoot, "FeverComboUI", -1);
+            PlaceUi<FeverBurstUI>(tutorialRoot, "FeverBurstUI", -1);
 
-            EditorSceneManager.MarkSceneDirty(practiceScene);
-            EditorSceneManager.SaveScene(practiceScene);
-            return true;
+            EditorSceneManager.MarkSceneDirty(tutorialScene);
+            EditorSceneManager.SaveScene(tutorialScene);
         }
         finally
         {
             if (gameScene.isLoaded)
                 EditorSceneManager.CloseScene(gameScene, false);
         }
+
+        // TutorialUI / TowerTypeSelect / TutorialPlacement — GameScene 복사 대신 전용 bake
+        TutorialSceneEditor.BakeTutorialSceneUi(silent: true);
+        return true;
     }
 
     static Transform FindGameplayCanvasRoot(Scene scene)
@@ -166,7 +170,7 @@ public static class BeatDefenderRuntimeUIEditor
             Undo.DestroyObjectImmediate(existing.gameObject);
 
         var copy = UnityEngine.Object.Instantiate(source.gameObject);
-        Undo.RegisterCreatedObjectUndo(copy, "Sync Practice UI");
+        Undo.RegisterCreatedObjectUndo(copy, "Sync Tutorial UI");
         copy.name = source.gameObject.name;
         SceneManager.MoveGameObjectToScene(copy, destScene);
         copy.transform.SetParent(destRoot, false);

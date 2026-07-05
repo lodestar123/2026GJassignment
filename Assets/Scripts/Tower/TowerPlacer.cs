@@ -12,6 +12,8 @@ public class TowerPlacer : MonoBehaviour
 
     [SerializeField] Transform towerRoot;
 
+    public void SetTowerRoot(Transform root) => towerRoot = root;
+
     readonly List<Tower> _towers = new();
     PlacementGrid _grid;
     ResourceManager _resources;
@@ -35,7 +37,19 @@ public class TowerPlacer : MonoBehaviour
 
     void Start()
     {
-        _grid = FindAnyObjectByType<PlacementGrid>();
+        EnsureGridBound();
+    }
+
+    public void EnsureGridBound()
+    {
+        var grid = FindAnyObjectByType<PlacementGrid>(FindObjectsInactive.Include);
+        if (grid == _grid)
+            return;
+
+        if (_grid != null)
+            _grid.OnCellClicked -= HandleCellClicked;
+
+        _grid = grid;
         if (_grid != null)
             _grid.OnCellClicked += HandleCellClicked;
     }

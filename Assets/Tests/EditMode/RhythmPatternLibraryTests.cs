@@ -33,7 +33,6 @@ namespace BeatDefender.Tests
         {
             float perfect = RhythmPatternLibrary.JudgmentPerfectSeconds;
             float good = RhythmPatternLibrary.JudgmentGoodSeconds;
-            // PERFECT(±0.11) 초과 · GOOD(±0.22) 이내 — 0.5×perfect는 여전히 PERFECT 창 안쪽
             float offset = (perfect + good) * 0.5f;
             var actual = new List<float> { offset, 0.5f + offset };
             var expected = new[] { 0f, 0.5f };
@@ -69,15 +68,17 @@ namespace BeatDefender.Tests
         [Test]
         public void ByTapCount_LookupMatchesAllPatterns()
         {
+            Assert.AreEqual(6, RhythmPatternLibrary.All.Count);
             Assert.IsTrue(RhythmPatternLibrary.ByTapCount.ContainsKey(2));
             Assert.IsTrue(RhythmPatternLibrary.ByTapCount.ContainsKey(3));
-            Assert.IsTrue(RhythmPatternLibrary.ByTapCount.ContainsKey(5));
             Assert.IsTrue(RhythmPatternLibrary.ByTapCount.ContainsKey(6));
-            Assert.AreEqual(4, RhythmPatternLibrary.All.Count);
+            Assert.IsFalse(RhythmPatternLibrary.ByTapCount.ContainsKey(5));
+            Assert.AreEqual(3, RhythmPatternLibrary.ByTapCount[2].Count);
+            Assert.AreEqual(2, RhythmPatternLibrary.ByTapCount[3].Count);
         }
 
         [Test]
-        public void TryGetByTapCount_ResolvesUniqueCommand()
+        public void TryGetByTapCount_ReturnsFirstRegisteredPattern()
         {
             Assert.IsTrue(RhythmPatternLibrary.TryGetByTapCount(2, out var two));
             Assert.AreEqual(CommandType.GoldPulse, two.Type);
@@ -85,11 +86,10 @@ namespace BeatDefender.Tests
             Assert.IsTrue(RhythmPatternLibrary.TryGetByTapCount(3, out var three));
             Assert.AreEqual(CommandType.RhythmShot, three.Type);
 
-            Assert.IsTrue(RhythmPatternLibrary.TryGetByTapCount(5, out var five));
-            Assert.AreEqual(CommandType.OverloadStrike, five.Type);
+            Assert.IsFalse(RhythmPatternLibrary.TryGetByTapCount(5, out _));
 
             Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.ChainZap, out var chain));
-            Assert.AreEqual(5, chain.TapCount);
+            Assert.AreEqual(6, chain.TapCount);
         }
 
         [Test]
@@ -109,15 +109,6 @@ namespace BeatDefender.Tests
         }
 
         [Test]
-        public void ShouldBackfillLateTap_OverloadFourTaps_BoundaryFifth_Backfills()
-        {
-            var pending = new List<float> { 0f, 0.25f, 0.5f, 0.75f };
-            Assert.IsTrue(RhythmPatternLibrary.ShouldBackfillLateTap(
-                pending, relEndedCycle: 1.05f, newCycleRel: 0.05f,
-                measureDuration: 1f, scale: 1f));
-        }
-
-        [Test]
         public void ShouldBackfillLateTap_EmptyPending_NeverBackfills()
         {
             Assert.IsFalse(RhythmPatternLibrary.ShouldBackfillLateTap(
@@ -132,11 +123,9 @@ namespace BeatDefender.Tests
             Assert.IsTrue(RhythmPatternLibrary.IsCompletePattern(taps, 1f, 1f));
         }
 
-[Test]
-        public void CanExtendToLongerPattern_TwoGoldTaps_NoLongerSharesPrefixWithAnyPattern()
+        [Test]
+        public void CanExtendToLongerPattern_TwoGoldTaps_NoLongerSharesPrefixWithRhythmShot()
         {
-            // GoldPulse(0, 0.5)는 더 이상 RhythmShot(0, 0.25, 0.75)의 접두가 아니므로,
-            // 어떤 시각에도 확장 대상이 없어야 한다 — 2타 커맨드가 즉시 확정될 수 있는 근거.
             var taps = new List<float> { 0f, 0.5f };
             Assert.IsFalse(RhythmPatternLibrary.CanExtendToLongerPattern(
                 taps, nowRel: 0.55f, measureDuration: 1f, scale: 1f));
@@ -145,17 +134,17 @@ namespace BeatDefender.Tests
         }
 
         [Test]
-        public void CanExtendToLongerPattern_RhythmShotThreeTaps_DoesNotExtendToOverload()
+        public void CanExtendToLongerPattern_RhythmShotThreeTaps_DoesNotExtendFurther()
         {
-            var taps = new List<float> { 0f, 0.5f, 0.75f };
+            var taps = new List<float> { 0f, 0.25f, 0.5f };
             Assert.IsFalse(RhythmPatternLibrary.CanExtendToLongerPattern(
                 taps, nowRel: 0.8f, measureDuration: 1f, scale: 1f));
         }
 
         [Test]
-        public void TryMatchCompletePattern_ChainZap_FiveTaps()
+        public void TryMatchCompletePattern_ChainZap_SixTaps()
         {
-            var taps = new List<float> { 0f, 0.15f, 0.35f, 0.55f, 0.75f };
+            var taps = new List<float> { 0f, 0.125f, 0.25f, 0.5f, 0.625f, 0.75f };
             Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.ChainZap, out var chainPattern));
             Assert.IsTrue(RhythmPatternLibrary.TryMatchSinglePattern(
                 taps, 1f, 1f, chainPattern, out var judgment));
@@ -187,13 +176,23 @@ namespace BeatDefender.Tests
         public void TryMatchSinglePattern_RhythmShot_RequiresThreeTaps()
         {
             Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.RhythmShot, out var shot));
-            var two = new List<float> { 0f, 0.5f };
+            var two = new List<float> { 0f, 0.25f };
             Assert.IsFalse(RhythmPatternLibrary.TryMatchSinglePattern(
                 two, 1f, 1f, shot, out _));
 
-            var three = new List<float> { 0f, 0.5f, 0.75f };
+            var three = new List<float> { 0f, 0.25f, 0.5f };
             Assert.IsTrue(RhythmPatternLibrary.TryMatchSinglePattern(
                 three, 1f, 1f, shot, out var judgment));
+            Assert.AreEqual(JudgmentResult.Perfect, judgment);
+        }
+
+        [Test]
+        public void TryMatchSinglePattern_OverloadStrike_RequiresThreeTaps()
+        {
+            Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.OverloadStrike, out var strike));
+            var three = new List<float> { 0f, 0.5f, 0.75f };
+            Assert.IsTrue(RhythmPatternLibrary.TryMatchSinglePattern(
+                three, 1f, 1f, strike, out var judgment));
             Assert.AreEqual(JudgmentResult.Perfect, judgment);
         }
 

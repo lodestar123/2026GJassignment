@@ -205,9 +205,11 @@
 | 패턴 | Tap | 시각 (1초 마디) | 효과 | CD |
 |------|-----|-----------------|------|-----|
 | GoldPulse | 2 | 0, 0.5 | +10G | — |
-| RhythmShot | 3 | 0, 0.5, 0.75 | 평타 타워 1발 | — |
-| OverloadStrike | 5 | 0, 0.25, 0.5, 0.75, 0.875 | Strike 8 dmg×1/적 | 10s |
-| BPMBoost | **6** | 0, 0.125, 0.25, 0.5, 0.625, 0.75 | 마디×0.8 (6s) + Boost 4 dmg | 18s |
+| RhythmShot | 3 | 0, 0.25, 0.5 | 평타 타워 1발 | — |
+| OverloadStrike | 3 | 0, 0.5, 0.75 | Strike 8 dmg×1/적 | 10s |
+| ChainZap | **6** | 0, 0.125, 0.25, 0.5, 0.625, 0.75 | 체인 4 dmg×1/적 | 18s |
+| TempoUp | 2 | 0, 0.25 | 마디×0.8 (6s) | — |
+| TempoDown | 2 | 0, 0.75 | 마디×1.25 (6s) | — |
 
 - **마디 종료(OnMeasureEnd)** 에 채점·초기화 · Fallback 입력 창 **1.2s** (BeatTower)
 - **RhythmTimelineUI:** 마디 진행(좌→우) + Space 입력 mark (Phase A)

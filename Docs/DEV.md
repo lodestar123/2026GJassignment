@@ -47,9 +47,9 @@
 | **Measure** | **2/4** · Reference **1초** · **채점=마디 종료(OnMeasureEnd)** |
 | Boost does NOT affect | Enemy move, spawn interval, Strike/Boost towers auto-fire |
 | **BeatTower DPS** | Last **1.2s** Space → **2 dmg**/beat; else **0.6** fallback — **BeatTower only** |
-| RhythmShot | **BeatTowers only** FireOnce(2) |
-| **OverloadStrike** | 5 tap, 10s CD → enemies in **StrikeTower** circles: **8 dmg once each** (deduped) |
-| **BPMBoost** | **6 tap**, 18s CD → BoostTower circles: **4 dmg once each** (deduped) + measure×0.8 for 6s |
+| RhythmShot | **BeatTowers only** FireOnce(ActiveDamage) |
+| **OverloadStrike** | 3 tap, 10s CD → enemies in **StrikeTower** circles: **8 dmg once each** (deduped) |
+| **ChainZap** | **6 tap**, 18s CD → BoostTower circles: **4 dmg once each** (deduped) + chain zap |
 | COOLDOWN attempt | **MISS** |
 | Judgment | 탭 수 + **타이밍** 모두 일치해야 성립 · GOOD **±0.22s** · PERFECT **±0.11s** (× PatternTimeScale) |
 | Core HP | **3** |
@@ -130,16 +130,20 @@ Assets/Scripts/
 | CommandType | Taps | Hit times (Ref 1s) | Effect |
 |-------------|------|-------------------|--------|
 | GoldPulse | 2 | 0, 0.5 | AddGold(10) |
-| RhythmShot | 3 | 0, 0.5, 0.75 | **BeatTowers** FireOnce (2 dmg) |
-| **OverloadStrike** | 5 | 0, 0.25, 0.5, 0.75, 0.875 | Deduped **8 dmg**/enemy in Strike circles |
-| BPMBoost | **6** | 0, 0.125, 0.25, 0.5, 0.625, 0.75 | Deduped **4 dmg** + SetBoost(6f) · measure **×0.8** |
+| RhythmShot | 3 | 0, 0.25, 0.5 | **BeatTowers** FireOnce (ActiveDamage) |
+| **OverloadStrike** | 3 | 0, 0.5, 0.75 | Deduped **8 dmg**/enemy in Strike circles |
+| ChainZap | **6** | 0, 0.125, 0.25, 0.5, 0.625, 0.75 | Deduped **4 dmg** + chain zap |
+| TempoUp | 2 | 0, 0.25 | measure **×0.8** (6s) |
+| TempoDown | 2 | 0, 0.75 | measure **×1.25** (6s) |
+
+> **Scroll 선택 1패턴:** `RhythmPatternSelector`가 선택한 패턴만 판정·가이드에 사용.
 
 ### BeatTower beat-sync
 
 - `OnBeat`: if `Time.time - lastSpaceTime <= 1.2f` → **2 dmg** to path leader; else **0.6** fallback
 - **Strike/Boost towers**: no OnBeat fire
 
-### OverloadStrike / BPMBoost dedupe
+### OverloadStrike / ChainZap dedupe
 
 ```csharp
 // Per activation: HashSet<Enemy> hit; each enemy at most once per skill event
@@ -147,14 +151,11 @@ Assets/Scripts/
 
 ### SkillCooldownController
 
-- COOLDOWN 중 OverloadStrike/BPMBoost attempt → **MISS** popup
+- COOLDOWN 중 OverloadStrike/ChainZap attempt → **MISS** popup
 - GoldPulse, RhythmShot: CD 0
-- **판정 = 탭 수 + 타이밍:** 기대 시각 ±GOOD 이내. **패턴 완성·연장 불가 시 즉시** 실행(0.22s 지연 제거).
-- **Gold vs RhythmShot:** 2타 후 3타(0.75) 창이 닫히면 GoldPulse 확정 · 3타 연속이면 RhythmShot 즉시.
+- **판정 = 탭 수 + 타이밍:** Scroll에서 **선택한 패턴 1종**만 매칭. 기대 시각 ±GOOD 이내.
 - **탭 손실 방지:** `MinTapGapReference` **0.02s** · 한 프레임 다중 리듬 키 수집.
-- **Early downbeat (이월):** |tap − cycleEnd| ≤ PERFECT · **현재 사이클 0 tap** → 다음 사이클 첫 박.
-- **Late backfill:** **이미 완성된 패턴·중간 슬롯(0.75)에는 백필 안 함.** Overload 4타 + 경계 5타만.
-- **Input offset:** Baseline **0.24s** + 플레이어 **감도 조정**(0 = baseline). PlayerPrefs `BeatDefender.InputOffsetAdjustment`. 판정·타임라인 felt 축.
+- **Input offset:** Baseline **0.24s** + 플레이어 **감도 조정**(±0.1s). PlayerPrefs `BeatDefender.InputOffsetAdjustment`. 판정·playhead = judged 축.
 
 ---
 

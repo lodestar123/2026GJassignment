@@ -6488,8 +6488,9 @@ MonoBehaviour:
   guidesRoot: {fileID: 1226871989}
   playheadSize: {x: 5, y: 34}
   markerSize: {x: 5, y: 30}
-  guideSize: {x: 4, y: 32}
-  guideAlpha: 0.78
+  guideSize: {x: 6, y: 38}
+  guideAlpha: 0.92
+  guideGlowAlpha: 0.38
   markerSideExtend: 0.1
   markerEarlyLateReference: 0.22
   markerHoldSeconds: 0.65
@@ -17898,7 +17899,6 @@ GameObject:
   - component: {fileID: 1785167789}
   - component: {fileID: 1785167788}
   - component: {fileID: 1785167787}
-  - component: {fileID: 1785167786}
   - component: {fileID: 1785167804}
   m_Layer: 0
   m_Name: --- Systems ---
@@ -17907,18 +17907,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1785167786
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1785167785}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b800e802e93d8d4795b4cbc6737629b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: BeatDefender::PracticeSceneLoader
 --- !u!114 &1785167787
 MonoBehaviour:
   m_ObjectHideFlags: 0

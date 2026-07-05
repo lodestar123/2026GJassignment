@@ -199,7 +199,7 @@ public class BeatClock : MonoBehaviour
             return;
 
         var scene = SceneManager.GetActiveScene();
-        if (scene.name != SceneNames.Game && scene.name != SceneNames.Practice)
+        if (scene.name != SceneNames.Game && scene.name != SceneNames.Tutorial)
             return;
 
         var canvas = FindAnyObjectByType<Canvas>();

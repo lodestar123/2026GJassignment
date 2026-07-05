@@ -2,5 +2,5 @@ public static class SceneNames
 {
     public const string Start = "StartScene";
     public const string Game = "GameScene";
-    public const string Practice = "PracticeScene";
+    public const string Tutorial = "TutorialScene";
 }

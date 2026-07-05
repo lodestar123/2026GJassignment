@@ -37,8 +37,8 @@ public static class RhythmPatternLibrary
     public static readonly IReadOnlyList<RhythmPattern> All = new[]
     {
         new RhythmPattern(CommandType.GoldPulse, new[] { 0f, 0.5f }),
-        new RhythmPattern(CommandType.RhythmShot, new[] { 0f, 0.5f, 0.75f }),
-        new RhythmPattern(CommandType.OverloadStrike, new[] { 0f, 0.25f, 0.5f, 0.75f, 0.875f }),
+        new RhythmPattern(CommandType.RhythmShot, new[] { 0f, 0.25f, 0.5f}),
+        new RhythmPattern(CommandType.OverloadStrike, new[] { 0f, 0.5f, 0.75f}),
         new RhythmPattern(CommandType.ChainZap, new[] { 0f, 0.125f, 0.25f, 0.5f, 0.625f, 0.75f }),
         new RhythmPattern(CommandType.TempoUp, new[] { 0f, 0.25f }),
         new RhythmPattern(CommandType.TempoDown, new[] { 0f, 0.75f })

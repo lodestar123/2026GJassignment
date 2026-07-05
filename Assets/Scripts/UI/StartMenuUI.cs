@@ -4,12 +4,12 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// StartScene — 게임 시작 · 박자 연습 · 종료.
+/// StartScene — 게임 시작 · 튜토리얼 · 종료.
 /// </summary>
 public class StartMenuUI : MonoBehaviour
 {
     [SerializeField] Button startGameButton;
-    [SerializeField] Button practiceButton;
+    [SerializeField] Button tutorialButton;
     [SerializeField] Button quitButton;
     [SerializeField] TextMeshProUGUI titleText;
 
@@ -17,11 +17,14 @@ public class StartMenuUI : MonoBehaviour
     {
         Time.timeScale = 1f;
 
+        tutorialButton ??= transform.Find("Btn_Tutorial")?.GetComponent<Button>()
+            ?? transform.Find("Btn_Practice")?.GetComponent<Button>();
+
         if (startGameButton != null)
             startGameButton.onClick.AddListener(() => SceneManager.LoadScene(GameSettings.ActiveGameSceneName));
 
-        if (practiceButton != null)
-            practiceButton.onClick.AddListener(() => SceneManager.LoadScene(SceneNames.Practice));
+        if (tutorialButton != null)
+            tutorialButton.onClick.AddListener(() => SceneManager.LoadScene(SceneNames.Tutorial));
 
         if (quitButton != null)
             quitButton.onClick.AddListener(Quit);

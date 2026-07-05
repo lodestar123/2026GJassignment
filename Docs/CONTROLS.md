@@ -30,7 +30,7 @@ Space·**기능 미할당 키보드 키** 리듬 입력 중 **슬롯 클릭·타
 |------|------|
 | 계속 | ESC |
 | 재시작 | GameScene 리로드 |
-| 박자 연습 | **PracticeScene** (Additive) |
+| 튜토리얼 | **TutorialScene** (StartScene에서) |
 | 시작 화면 | StartScene |
 
 R 키 **없음**.

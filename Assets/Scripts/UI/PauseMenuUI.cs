@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// ESC Pause 패널 — 계속 / 재시작 / 연습 / 설정 / 타이틀.
+/// ESC Pause 패널 — 계속 / 재시작 / 설정 / 타이틀.
 /// </summary>
 public class PauseMenuUI : MonoBehaviour
 {
@@ -13,7 +13,6 @@ public class PauseMenuUI : MonoBehaviour
     [SerializeField] GameObject buttonsRoot;
     [SerializeField] Button continueButton;
     [SerializeField] Button restartButton;
-    [SerializeField] Button practiceButton;
     [SerializeField] Button settingsButton;
     [SerializeField] Button titleButton;
 
@@ -77,9 +76,6 @@ public class PauseMenuUI : MonoBehaviour
 
         if (restartButton != null)
             restartButton.onClick.AddListener(() => PauseController.Instance?.RestartGame());
-
-        if (practiceButton != null)
-            practiceButton.onClick.AddListener(() => PracticeSceneLoader.Instance?.LoadPracticeFromPause());
 
         if (settingsButton != null)
             settingsButton.onClick.AddListener(OpenSettings);

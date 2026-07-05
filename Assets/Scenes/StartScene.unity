@@ -1002,7 +1002,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::StartMenuUI
   startGameButton: {fileID: 1981628265}
-  practiceButton: {fileID: 997765336}
+  tutorialButton: {fileID: 0}
   quitButton: {fileID: 790185458}
   titleText: {fileID: 1928536940}
 --- !u!114 &208917477
@@ -1390,8 +1390,9 @@ MonoBehaviour:
   guidesRoot: {fileID: 0}
   playheadSize: {x: 5, y: 34}
   markerSize: {x: 5, y: 30}
-  guideSize: {x: 4, y: 32}
-  guideAlpha: 0.78
+  guideSize: {x: 6, y: 38}
+  guideAlpha: 0.92
+  guideGlowAlpha: 0.38
   markerSideExtend: 0.1
   markerEarlyLateReference: 0.22
   markerHoldSeconds: 0.65
@@ -3650,7 +3651,7 @@ GameObject:
   - component: {fileID: 997765336}
   - component: {fileID: 997765339}
   m_Layer: 0
-  m_Name: Btn_Practice
+  m_Name: Btn_Tutorial
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5670,7 +5671,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uBC15\uC790 \uC5F0\uC2B5"
+  m_text: "\uD29C\uD1A0\uB9AC\uC5BC\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f8b379176fe7a754fa2d5facea235382, type: 2}
   m_sharedMaterial: {fileID: 1360480185098188681, guid: f8b379176fe7a754fa2d5facea235382, type: 2}

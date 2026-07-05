@@ -24,7 +24,7 @@ public static class StartSceneVisualBuilder
         if (root == null)
             return null;
 
-        foreach (var name in new[] { "Btn_Start", "Btn_Practice", "Btn_Quit" })
+        foreach (var name in new[] { "Btn_Start", "Btn_Tutorial", "Btn_Practice", "Btn_Quit" })
         {
             var sprite = root.Find(name)?.GetComponent<Image>()?.sprite;
             if (sprite != null)
@@ -305,7 +305,9 @@ public static class StartSceneVisualBuilder
     static void StyleButtons(RectTransform root)
     {
         StyleButton(root, "Btn_Start", Gold, "게임 시작", 20f);
-        StyleButton(root, "Btn_Practice", Cyan, "박자 연습", -58f);
+        StyleButton(root, "Btn_Tutorial", Cyan, "튜토리얼", -58f);
+        // 레거시 씬 호환
+        StyleButton(root, "Btn_Practice", Cyan, "튜토리얼", -58f);
         StyleButton(root, "Btn_Quit", new Color(0.45f, 0.48f, 0.55f), "종료", -136f);
     }
 
