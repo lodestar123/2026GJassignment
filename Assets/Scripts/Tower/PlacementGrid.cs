@@ -2,17 +2,27 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// MAP.md 배치 슬롯 14칸 생성.
+/// MAP.md 배치 슬롯 — Slot_N 인덱스와 slotUnlockRules 로 초기 해금 지정.
 /// </summary>
 public class PlacementGrid : MonoBehaviour
 {
+    [Header("Slot Unlock")]
+    [Tooltip("비어 있으면 모든 슬롯 시작 시 해금. 항목 있는 슬롯만 규칙 적용, 나머지는 locked + defaultLockedUnlockCost")]
+    [SerializeField] PlacementSlotUnlockRule[] slotUnlockRules;
+
+    [SerializeField] int defaultLockedUnlockCost = 20;
+
     public event Action<TowerPlacementCell> OnCellClicked;
 
     TowerPlacementCell[] _cells;
 
     public TowerPlacementCell[] Cells => _cells;
 
-    void Start() => EnsureCells();
+    void Start()
+    {
+        EnsureCells();
+        ApplyUnlockRules();
+    }
 
     MapLayoutDefinition ResolveLayout()
     {
@@ -25,13 +35,13 @@ public class PlacementGrid : MonoBehaviour
         if (_cells == null || _cells.Length == 0)
             _cells = GetComponentsInChildren<TowerPlacementCell>(true);
 
-        var slots = ResolveLayout().PlacementSlots;
         for (int i = 0; i < _cells.Length; i++)
         {
             var cell = _cells[i];
             if (cell == null)
                 continue;
 
+            var slots = ResolveLayout().PlacementSlots;
             if (i < slots.Length)
                 cell.SetupFromScene(i);
 
@@ -40,10 +50,57 @@ public class PlacementGrid : MonoBehaviour
         }
     }
 
+    public void ApplyUnlockRules()
+    {
+        if (_cells == null || _cells.Length == 0)
+            _cells = GetComponentsInChildren<TowerPlacementCell>(true);
+
+        if (_cells == null)
+            return;
+
+        bool hasRules = slotUnlockRules != null && slotUnlockRules.Length > 0;
+
+        foreach (var cell in _cells)
+        {
+            if (cell == null)
+                continue;
+
+            if (!hasRules)
+            {
+                cell.ApplyGridUnlockRule(unlockedAtStart: true, goldCost: 0);
+                continue;
+            }
+
+            if (TryGetRule(cell.SlotIndex, out var rule))
+                cell.ApplyGridUnlockRule(rule.unlockedAtStart, rule.unlockGoldCost);
+            else
+                cell.ApplyGridUnlockRule(unlockedAtStart: false, goldCost: defaultLockedUnlockCost);
+        }
+    }
+
+    bool TryGetRule(int slotIndex, out PlacementSlotUnlockRule rule)
+    {
+        if (slotUnlockRules != null)
+        {
+            foreach (var entry in slotUnlockRules)
+            {
+                if (entry.slotIndex != slotIndex)
+                    continue;
+
+                rule = entry;
+                return true;
+            }
+        }
+
+        rule = default;
+        return false;
+    }
+
     public void Build()
     {
         ClearChildrenRuntime();
         CreateCells();
+        ApplyUnlockRules();
     }
 
 #if UNITY_EDITOR
@@ -53,6 +110,7 @@ public class PlacementGrid : MonoBehaviour
             DestroyImmediate(transform.GetChild(i).gameObject);
 
         CreateCells();
+        ApplyUnlockRules();
     }
 #endif
 

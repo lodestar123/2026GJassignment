@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 탭 입력 → 즉시 판정(패턴 완성·연장 불가 시) + 사이클 종료 flush.
-/// 경계 백필: Overload 5타 등 <b>후반 슬롯</b>만, 완성 패턴에는 추가 안 함.
+/// 탭 입력 → 판정.
+/// Scroll에서 선택한 패턴 1종만 매칭한다(기본 GoldPulse).
 /// </summary>
 [DefaultExecutionOrder(-80)]
 public class RhythmCommandDetector : MonoBehaviour
@@ -12,24 +12,17 @@ public class RhythmCommandDetector : MonoBehaviour
     public static RhythmCommandDetector Instance { get; private set; }
 
     public event Action<CommandType, JudgmentResult> OnCommandResolved;
-    /// <summary>offset 적용 마디 내 초 — 타임라인·판정 동일 축.</summary>
+    /// <summary>offset 적용 마디 내 초 — 타임라인 시각화 전용.</summary>
     public event Action<float> OnTapVisualized;
 
-    public int CurrentTapCount => _cycleTaps.Count;
+    public int CurrentTapCount => _seqOpen ? _seqTaps.Count : 0;
 
-    readonly List<float> _cycleTaps = new();
+    readonly List<float> _seqTaps = new();
+    float _seqAnchor;
+    bool _seqOpen;
+
     readonly List<float> _evalSnapshot = new();
-
-    float? _pendingNextCycleTap;
-    float _pendingTapAbsoluteTime;
-    bool _applyPendingThisFrame;
-
-    readonly List<float> _pendingEvalTaps = new();
-    bool _hasPendingEval;
-    bool _pendingAwaitingBackfill;
-    float _pendingEvalDuration;
-    float _pendingEvalScale;
-    float _endedCycleStartTime;
+    readonly List<KeyCode> _frameKeys = new();
 
     RhythmInputRecorder _recorder;
     RhythmInputSettings _inputSettings;
@@ -37,6 +30,7 @@ public class RhythmCommandDetector : MonoBehaviour
     CommandEffectController _effects;
     RunStats _stats;
     TowerRegistry _towers;
+    RhythmPatternSelector _selector;
 
     void Awake()
     {
@@ -59,37 +53,27 @@ public class RhythmCommandDetector : MonoBehaviour
         _towers = GetComponent<TowerRegistry>();
         if (_towers == null)
             _towers = FindAnyObjectByType<TowerRegistry>();
+        _selector = GetComponent<RhythmPatternSelector>();
+        if (_selector == null)
+            _selector = gameObject.AddComponent<RhythmPatternSelector>();
     }
 
-    void OnEnable() => TrySubscribe();
-    void Start() => TrySubscribe();
-    void OnDisable() => TryUnsubscribe();
+    void OnEnable()
+    {
+        if (_selector != null)
+            _selector.OnSelectionChanged += HandleSelectionChanged;
+    }
+
+    void OnDisable()
+    {
+        if (_selector != null)
+            _selector.OnSelectionChanged -= HandleSelectionChanged;
+    }
 
     void OnDestroy()
     {
-        TryUnsubscribe();
         if (Instance == this)
             Instance = null;
-    }
-
-    void TrySubscribe()
-    {
-        if (BeatClock.Instance == null)
-            return;
-
-        BeatClock.Instance.OnMeasureEnd -= OnCycleEnd;
-        BeatClock.Instance.OnMeasureEnd += OnCycleEnd;
-        BeatClock.Instance.OnMeasureStart -= OnCycleStart;
-        BeatClock.Instance.OnMeasureStart += OnCycleStart;
-    }
-
-    void TryUnsubscribe()
-    {
-        if (BeatClock.Instance == null)
-            return;
-
-        BeatClock.Instance.OnMeasureEnd -= OnCycleEnd;
-        BeatClock.Instance.OnMeasureStart -= OnCycleStart;
     }
 
     void Update()
@@ -104,19 +88,24 @@ public class RhythmCommandDetector : MonoBehaviour
             RegisterTap(rawTime);
         }
 
-        TryEvaluateWhenExtensionClosed(_cycleTaps);
+        TryCloseIfExpired();
     }
 
-    readonly List<KeyCode> _frameKeys = new();
-
-    void LateUpdate()
+    void HandleSelectionChanged(CommandType type)
     {
-        if (_applyPendingThisFrame)
-        {
-            _applyPendingThisFrame = false;
-            ApplyPendingTap();
-            TryEvaluateWhenExtensionClosed(_cycleTaps);
-        }
+        AbortSequence();
+    }
+
+    CommandType GetSelectedType()
+    {
+        if (_selector != null && _selector.Selected != CommandType.None)
+            return _selector.Selected;
+        return CommandType.GoldPulse;
+    }
+
+    bool TryGetSelectedPattern(out RhythmPattern pattern)
+    {
+        return RhythmPatternLibrary.TryGetByType(GetSelectedType(), out pattern);
     }
 
     float AdjustTapTime(float rawTime)
@@ -130,33 +119,15 @@ public class RhythmCommandDetector : MonoBehaviour
         return rawTime - RhythmInputSettings.DefaultInputOffsetSeconds;
     }
 
-    void OnCycleStart()
+    void VisualizeTap(float rawTime)
     {
-        _cycleTaps.Clear();
-        _applyPendingThisFrame = _pendingNextCycleTap.HasValue;
-    }
+        if (BeatClock.Instance == null)
+            return;
 
-    void OnCycleEnd()
-    {
-        if (_hasPendingEval)
-            FlushPendingEval();
-
-        float scale = BeatClock.Instance != null ? BeatClock.Instance.PatternTimeScale : 1f;
-        float duration = BeatClock.Instance != null ? BeatClock.Instance.EffectiveMeasureDuration : 1f;
-
-        _pendingEvalTaps.Clear();
-        _pendingEvalTaps.AddRange(_cycleTaps);
-        _pendingEvalDuration = duration;
-        _pendingEvalScale = scale;
-        _endedCycleStartTime = BeatClock.Instance != null ? BeatClock.Instance.MeasureStartTime : Time.time;
-        _pendingAwaitingBackfill = RhythmPatternLibrary.NeedsBoundaryBackfillSlot(
-            _pendingEvalTaps, duration, scale);
-        _hasPendingEval = _pendingEvalTaps.Count > 0;
-
-        if (_hasPendingEval && !_pendingAwaitingBackfill)
-            FlushPendingEval();
-
-        _cycleTaps.Clear();
+        float rel = RhythmInputSettings.GetFeltElapsedInMeasure(
+            rawTime,
+            BeatClock.Instance.MeasureStartTime);
+        OnTapVisualized?.Invoke(rel);
     }
 
     void RegisterTap(float rawTime)
@@ -164,193 +135,125 @@ public class RhythmCommandDetector : MonoBehaviour
         if (BeatClock.Instance == null)
             return;
 
-        bool backfilled = TryBackfillEndedCycle(rawTime);
+        float time = AdjustTapTime(rawTime);
 
-        if (_hasPendingEval && _pendingAwaitingBackfill && !backfilled)
+        if (!TryGetSelectedPattern(out var pattern))
+            return;
+
+        if (!_seqOpen)
         {
-            FlushPendingEval();
-            _pendingAwaitingBackfill = false;
+            StartSequence(time);
+            return;
         }
 
-        float time = AdjustTapTime(rawTime);
-        float cycleDuration = BeatClock.Instance.EffectiveMeasureDuration;
+        float duration = BeatClock.Instance.EffectiveMeasureDuration;
         float scale = BeatClock.Instance.PatternTimeScale;
         float good = RhythmPatternLibrary.GetJudgmentGood(scale);
-        float perfect = RhythmPatternLibrary.GetJudgmentPerfect(scale);
-        float rel = GetAdjustedRelativeTime(rawTime);
+        float rel = time - _seqAnchor;
 
-        if (rel > cycleDuration + good)
+        if (TryAcceptAsNextSlot(rel, pattern, duration, good))
+        {
+            _seqTaps.Add(rel);
+            _recorder?.RecordTap(time);
+
+            if (_seqTaps.Count >= pattern.TapCount)
+                CloseSequence();
+            else
+                TryCloseIfExpired();
+
             return;
+        }
 
-        if (TryQueueEarlyNextBeat(rel, cycleDuration, perfect, time))
-            return;
-
-        if (rel < -good)
-            return;
-
-        if (AddTapToCycle(rel, time))
-            TryEvaluateWhenExtensionClosed(_cycleTaps, rel);
+        CloseSequence();
+        StartSequence(time);
     }
 
-    bool TryBackfillEndedCycle(float rawTime)
+    void StartSequence(float anchorTime)
     {
-        if (!_hasPendingEval || !_pendingAwaitingBackfill)
-            return false;
+        _seqAnchor = anchorTime;
+        _seqTaps.Clear();
+        _seqTaps.Add(0f);
+        _seqOpen = true;
+        _recorder?.RecordTap(anchorTime);
+    }
 
-        if (_pendingEvalTaps.Count == 0)
-            return false;
-
-        float relEnded = AdjustTapTime(rawTime) - _endedCycleStartTime;
-        float newCycleRel = GetAdjustedRelativeTime(rawTime);
-
-        if (!RhythmPatternLibrary.ShouldBackfillLateTap(
-                _pendingEvalTaps, relEnded, newCycleRel, _pendingEvalDuration, _pendingEvalScale))
-            return false;
-
-        float minGap = RhythmPatternLibrary.MinTapGapReference * _pendingEvalScale;
-        for (int i = 0; i < _pendingEvalTaps.Count; i++)
+    bool TryAcceptAsNextSlot(float rel, RhythmPattern pattern, float duration, float good)
+    {
+        float minGap = RhythmPatternLibrary.MinTapGapReference * BeatClock.Instance.PatternTimeScale;
+        for (int i = 0; i < _seqTaps.Count; i++)
         {
-            if (Mathf.Abs(relEnded - _pendingEvalTaps[i]) < minGap)
+            if (Mathf.Abs(rel - _seqTaps[i]) < minGap)
                 return false;
         }
 
-        _pendingEvalTaps.Add(relEnded);
-        _pendingEvalTaps.Sort();
-
-        if (TryEvaluateImmediate(_pendingEvalTaps, _pendingEvalDuration, _pendingEvalScale))
-        {
-            _hasPendingEval = false;
-            _pendingAwaitingBackfill = false;
-        }
-
-        return true;
-    }
-
-    public float GetAdjustedRelativeTime(float rawTime)
-    {
-        return AdjustTapTime(rawTime) - BeatClock.Instance.MeasureStartTime;
-    }
-
-    void VisualizeTap(float rawTime)
-    {
-        if (BeatClock.Instance == null)
-            return;
-
-        OnTapVisualized?.Invoke(GetAdjustedRelativeTime(rawTime));
-    }
-
-    bool TryQueueEarlyNextBeat(float rel, float cycleDuration, float perfect, float absoluteTime)
-    {
-        if (_cycleTaps.Count > 0)
+        int n = _seqTaps.Count;
+        if (n >= pattern.TapCount)
             return false;
 
-        float nextRel = rel - cycleDuration;
-        if (Mathf.Abs(nextRel) > perfect)
+        var expected = pattern.GetExpectedHitTimes(duration);
+        if (!PrefixMatches(_seqTaps, expected, good))
             return false;
 
-        _pendingNextCycleTap = nextRel;
-        _pendingTapAbsoluteTime = absoluteTime;
-        return true;
+        return Mathf.Abs(rel - expected[n]) <= good;
     }
 
-    void ApplyPendingTap()
+    static bool PrefixMatches(List<float> actual, float[] expected, float good)
     {
-        if (!_pendingNextCycleTap.HasValue)
-            return;
-
-        if (AddTapToCycle(_pendingNextCycleTap.Value, _pendingTapAbsoluteTime))
+        for (int i = 0; i < actual.Count; i++)
         {
-            float rel = _pendingNextCycleTap.Value;
-            _pendingNextCycleTap = null;
-            TryEvaluateWhenExtensionClosed(_cycleTaps, rel);
-        }
-    }
-
-    bool AddTapToCycle(float rel, float absoluteTime)
-    {
-        float scale = BeatClock.Instance.PatternTimeScale;
-        float minGap = RhythmPatternLibrary.MinTapGapReference * scale;
-
-        for (int i = 0; i < _cycleTaps.Count; i++)
-        {
-            if (Mathf.Abs(rel - _cycleTaps[i]) < minGap)
+            if (Mathf.Abs(actual[i] - expected[i]) > good)
                 return false;
         }
 
-        _cycleTaps.Add(rel);
-        _cycleTaps.Sort();
-        _recorder?.RecordTap(absoluteTime);
         return true;
     }
 
-    void TryEvaluateWhenExtensionClosed(List<float> taps, float? nowRelOverride = null)
+    void TryCloseIfExpired()
     {
-        if (taps.Count == 0 || BeatClock.Instance == null)
+        if (!_seqOpen || BeatClock.Instance == null || !TryGetSelectedPattern(out var pattern))
             return;
 
         float duration = BeatClock.Instance.EffectiveMeasureDuration;
         float scale = BeatClock.Instance.PatternTimeScale;
-        float nowRel = nowRelOverride ?? GetAdjustedRelativeTime(Time.time);
+        float nowRel = AdjustTapTime(Time.time) - _seqAnchor;
 
-        if (RhythmPatternLibrary.CanExtendToLongerPattern(taps, nowRel, duration, scale))
+        if (RhythmPatternLibrary.CanExtendPattern(_seqTaps, nowRel, duration, scale, pattern))
             return;
 
-        TryEvaluateImmediate(taps, duration, scale);
+        CloseSequence();
     }
 
-    void TryEvaluateImmediate(List<float> taps)
+    void CloseSequence()
     {
-        if (BeatClock.Instance == null)
+        if (!_seqOpen)
             return;
 
-        TryEvaluateImmediate(
-            taps,
-            BeatClock.Instance.EffectiveMeasureDuration,
-            BeatClock.Instance.PatternTimeScale);
-    }
+        _seqOpen = false;
 
-    bool TryEvaluateImmediate(List<float> taps, float duration, float scale)
-    {
-        if (taps.Count == 0)
-            return false;
+        if (BeatClock.Instance == null || !TryGetSelectedPattern(out var pattern))
+        {
+            _seqTaps.Clear();
+            return;
+        }
 
-        if (!RhythmPatternLibrary.TryMatchCompletePattern(taps, duration, scale, out var pattern, out var judgment))
-            return false;
+        float duration = BeatClock.Instance.EffectiveMeasureDuration;
+        float scale = BeatClock.Instance.PatternTimeScale;
 
         _evalSnapshot.Clear();
-        _evalSnapshot.AddRange(taps);
-        ResolveCommand(pattern.Type, judgment, taps.Count, duration);
-        taps.Clear();
-        return true;
+        _evalSnapshot.AddRange(_seqTaps);
+
+        if (RhythmPatternLibrary.TryMatchSinglePattern(_seqTaps, duration, scale, pattern, out var judgment))
+            ResolveCommand(pattern.Type, judgment, _evalSnapshot.Count, duration);
+        else
+            ResolveCommand(CommandType.None, JudgmentResult.Miss, _evalSnapshot.Count, duration);
+
+        _seqTaps.Clear();
     }
 
-    void FlushPendingEval()
+    void AbortSequence()
     {
-        if (!_hasPendingEval)
-            return;
-
-        _hasPendingEval = false;
-        _pendingAwaitingBackfill = false;
-
-        if (_pendingEvalTaps.Count == 0)
-            return;
-
-        EvaluateTaps(_pendingEvalTaps, _pendingEvalDuration, _pendingEvalScale);
-        _pendingEvalTaps.Clear();
-    }
-
-    void EvaluateTaps(List<float> taps, float cycleDuration, float scale)
-    {
-        if (TryEvaluateImmediate(taps, cycleDuration, scale))
-            return;
-
-        _evalSnapshot.Clear();
-        _evalSnapshot.AddRange(taps);
-
-        if (_evalSnapshot.Count == 0)
-            return;
-
-        ResolveCommand(CommandType.None, JudgmentResult.Miss, _evalSnapshot.Count, cycleDuration);
+        _seqOpen = false;
+        _seqTaps.Clear();
     }
 
     void ResolveCommand(CommandType type, JudgmentResult judgment, int tapCount, float cycleDuration)
@@ -378,7 +281,7 @@ public class RhythmCommandDetector : MonoBehaviour
         OnCommandResolved?.Invoke(type, judgment);
 
         if (type == CommandType.None && judgment == JudgmentResult.Miss)
-            Debug.Log($"[Rhythm] MISS — {tapCount} taps [{FormatTaps(_evalSnapshot)}] (measure {cycleDuration:0.###}s)");
+            Debug.Log($"[Rhythm] MISS — {GetSelectedType()} / {tapCount} taps [{FormatTaps(_evalSnapshot)}]");
         else if (judgment == JudgmentResult.NoTower)
             Debug.Log($"[Rhythm] NO TOWER — {type} (해당 타워 미배치)");
         else
@@ -388,7 +291,7 @@ public class RhythmCommandDetector : MonoBehaviour
     bool HasRequiredTower(CommandType type) => type switch
     {
         CommandType.OverloadStrike => _towers != null && _towers.StrikeTowers.Count > 0,
-        CommandType.BPMBoost => _towers != null && _towers.BoostTowers.Count > 0,
+        CommandType.ChainZap => _towers != null && _towers.BoostTowers.Count > 0,
         _ => true
     };
 

@@ -82,14 +82,19 @@ public class RhythmDebugUI : MonoBehaviour
         float effectiveMeasure = BeatClock.Instance != null ? BeatClock.Instance.EffectiveMeasureDuration : baseMeasure;
         float beatSec = BeatClock.Instance != null ? BeatClock.Instance.BeatInterval : baseMeasure * 0.5f;
         float bpm = BeatClock.Instance != null ? BeatClock.Instance.CurrentBpm : 120f;
-        bool boosted = BeatClock.Instance != null && BeatClock.Instance.IsBoosted;
-        float boostLeft = BeatClock.Instance != null ? BeatClock.Instance.BoostRemaining : 0f;
+        bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
+        float feverLeft = FeverTimeController.Instance != null
+            ? FeverTimeController.Instance.FeverRemaining
+            : 0f;
+        float tempoScale = BeatClock.Instance != null ? BeatClock.Instance.TempoScale : 1f;
+        int fastStacks = TempoController.Instance != null ? TempoController.Instance.FastStacks : 0;
+        int slowStacks = TempoController.Instance != null ? TempoController.Instance.SlowStacks : 0;
         float scale = BeatClock.Instance != null ? BeatClock.Instance.PatternTimeScale : baseMeasure / BeatClock.ReferenceMeasureDuration;
         int gold = _resources != null ? _resources.Gold : 0;
         int taps = _detector != null ? _detector.CurrentTapCount : 0;
         int beatInMeasure = BeatClock.Instance != null ? BeatClock.Instance.BeatIndexInMeasure + 1 : 0;
         float strikeCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.OverloadStrike) : 0f;
-        float boostCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.BPMBoost) : 0f;
+        float chainCd = _cooldowns != null ? _cooldowns.GetRemaining(CommandType.ChainZap) : 0f;
         int perfect = _stats != null ? _stats.PerfectCount : 0;
         int good = _stats != null ? _stats.GoodCount : 0;
         int miss = _stats != null ? _stats.MissCount : 0;
@@ -97,11 +102,14 @@ public class RhythmDebugUI : MonoBehaviour
         float md = effectiveMeasure;
         float g = RhythmPatternLibrary.GetJudgmentGood(scale);
 
-        string measureLine = boosted
-            ? $"Measure {effectiveMeasure:0.##}s (base {baseMeasure:0.##}s x{BeatClock.BoostMeasureScale}) / Beat {beatSec:0.##}s ({bpm:0} BPM)"
+        string measureLine = tempoScale != 1f
+            ? $"Measure {effectiveMeasure:0.##}s (base {baseMeasure:0.##}s x{tempoScale:0.##}) / Beat {beatSec:0.##}s ({bpm:0} BPM)"
             : $"Measure {baseMeasure:0.##}s / Beat {beatSec:0.##}s ({bpm:0} BPM)";
-        string boostLine = boosted
-            ? $"<color=#CE93D8>BPMBoost ACTIVE {boostLeft:0.0}s left</color>\n"
+        string boostLine = fever
+            ? $"<color=#FFB74D>FEVER DMG x{FeverTimeController.DamageMultiplier:0.#} {feverLeft:0.0}s</color>\n"
+            : "";
+        string tempoLine = fastStacks > 0 || slowStacks > 0
+            ? $"Tempo fast x{fastStacks} / slow x{slowStacks}\n"
             : "";
 
         float inputOffset = RhythmInputSettings.Instance != null
@@ -114,16 +122,19 @@ public class RhythmDebugUI : MonoBehaviour
         statusText.text =
             "<b>Beat Defender - Phase A</b>\n" +
             boostLine +
+            tempoLine +
             $"{measureLine}  |  {beatInMeasure}/2  |  Gold: {gold}G  |  Taps {taps}\n" +
-            $"Strike CD: {strikeCd:0.0}s  |  Boost CD: {boostCd:0.0}s  |  Window +/-{g:0.##}s  |  Input -{inputOffset * 1000f:0}ms (adj {inputAdj * 1000f:+0;-0}ms)\n" +
+            $"Strike CD: {strikeCd:0.0}s  |  Chain CD: {chainCd:0.0}s  |  Window +/-{g:0.##}s  |  Input -{inputOffset * 1000f:0}ms (adj {inputAdj * 1000f:+0;-0}ms)\n" +
             $"Judge: P{perfect} G{good} M{miss}\n" +
             $"<b>Last: {_lastLine}</b>\n" +
             $"<size=75%><color=#AAAAAA>Judgment every {effectiveMeasure:0.##}s (2 beats). No judgment at beat 2 only.</color></size>\n\n" +
             "<size=80%>" +
-            $"Gold - <b>2 taps</b>: 0s, {md * 0.5f:0.##}s (beat 1 and 2)\n" +
-            $"RhythmShot - <b>3 taps</b>: 0, {md * 0.5f:0.##}, {md * 0.75f:0.##}s\n" +
-            $"Overload - <b>5 taps</b>: 0, {md * 0.25f:0.##}, {md * 0.5f:0.##}, {md * 0.75f:0.##}, {md * 0.875f:0.##}s\n" +
-            "BPMBoost - <b>1 tap</b>: 0s only (no extra input in cycle)" +
+            $"Gold - {RhythmPatternLibrary.FormatPatternHint(CommandType.GoldPulse, md)}\n" +
+            $"RhythmShot - {RhythmPatternLibrary.FormatPatternHint(CommandType.RhythmShot, md)}\n" +
+            $"Overload - {RhythmPatternLibrary.FormatPatternHint(CommandType.OverloadStrike, md)}\n" +
+            $"ChainZap - {RhythmPatternLibrary.FormatPatternHint(CommandType.ChainZap, md)}\n" +
+            $"Fast - {RhythmPatternLibrary.FormatPatternHint(CommandType.TempoUp, md)}\n" +
+            $"Slow - {RhythmPatternLibrary.FormatPatternHint(CommandType.TempoDown, md)}" +
             "</size>";
     }
 

@@ -2,18 +2,27 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 배치 슬롯 1칸 — 클릭으로 설치/교체.
+/// 배치 슬롯 1칸 — 클릭으로 해금 / 설치 / 교체.
 /// </summary>
 [RequireComponent(typeof(BoxCollider2D))]
 public class TowerPlacementCell : MonoBehaviour
 {
+    [Header("Unlock (맵 수정 시 셀마다 직접 지정 가능)")]
+    [SerializeField] bool useLocalUnlockSettings;
+    [SerializeField] bool unlockedAtStart = true;
+    [SerializeField] int unlockGoldCost = 20;
+
     public int SlotIndex { get; private set; }
     public Tower Occupant { get; private set; }
+    public bool IsUnlocked { get; private set; }
+    public int UnlockGoldCost { get; private set; }
 
     SpriteRenderer _sprite;
     Color _normalColor = new(0.2f, 0.65f, 0.35f, 0.35f);
     Color _hoverColor = new(0.35f, 0.85f, 0.45f, 0.55f);
     Color _blockedColor = new(0.85f, 0.25f, 0.25f, 0.45f);
+    Color _lockedColor = new(0.35f, 0.35f, 0.38f, 0.55f);
+    Color _lockedHoverColor = new(0.55f, 0.5f, 0.2f, 0.65f);
 
     public event Action<TowerPlacementCell> OnCellClicked;
 
@@ -32,6 +41,30 @@ public class TowerPlacementCell : MonoBehaviour
         EnsureVisual();
     }
 
+    /// <summary>PlacementGrid 규칙 적용 — useLocalUnlockSettings 이면 무시.</summary>
+    public void ApplyGridUnlockRule(bool unlockedAtStart, int goldCost)
+    {
+        if (useLocalUnlockSettings)
+            return;
+
+        ConfigureUnlock(unlockedAtStart, goldCost);
+    }
+
+    public void ConfigureUnlock(bool unlocked, int goldCost)
+    {
+        unlockedAtStart = unlocked;
+        unlockGoldCost = Mathf.Max(0, goldCost);
+        IsUnlocked = unlocked;
+        UnlockGoldCost = unlockGoldCost;
+        RefreshVisual();
+    }
+
+    public void SetUnlocked(bool unlocked)
+    {
+        IsUnlocked = unlocked;
+        RefreshVisual();
+    }
+
     public void SetOccupant(Tower tower)
     {
         Occupant = tower;
@@ -48,16 +81,29 @@ public class TowerPlacementCell : MonoBehaviour
             return;
 
         EnsureVisual();
-        _sprite.color = GetHoverAffordable() ? _hoverColor : _blockedColor;
+        _sprite.color = GetHoverColor();
+
+        if (!IsUnlocked)
+            PlacementSlotTooltipUI.Instance?.Show(this);
+        else if (Occupant != null && !TowerSelection.HasSelection)
+            TowerSellUI.Resolve()?.Show(Occupant);
     }
 
     void OnMouseExit()
     {
         EnsureVisual();
-        _sprite.color = _normalColor;
+        RefreshVisual();
+
+        if (!IsUnlocked)
+            PlacementSlotTooltipUI.Instance?.Hide();
     }
 
-    void Awake() => EnsureVisual();
+    void Awake()
+    {
+        EnsureVisual();
+        if (useLocalUnlockSettings)
+            ConfigureUnlock(unlockedAtStart, unlockGoldCost);
+    }
 
     void EnsureVisual()
     {
@@ -73,14 +119,33 @@ public class TowerPlacementCell : MonoBehaviour
             transform.localScale = Vector3.one * 0.85f;
         }
 
-        _sprite.color = _normalColor;
-
         var col = GetComponent<BoxCollider2D>();
         if (col != null)
         {
             col.size = Vector2.one;
             col.isTrigger = false;
         }
+
+        RefreshVisual();
+    }
+
+    void RefreshVisual()
+    {
+        if (_sprite == null)
+            return;
+
+        _sprite.color = IsUnlocked ? _normalColor : _lockedColor;
+    }
+
+    Color GetHoverColor()
+    {
+        if (!IsUnlocked)
+        {
+            int gold = ResourceManager.Instance != null ? ResourceManager.Instance.Gold : 0;
+            return gold >= UnlockGoldCost ? _lockedHoverColor : _blockedColor;
+        }
+
+        return GetHoverAffordable() ? _hoverColor : _blockedColor;
     }
 
     void OnMouseDown()
@@ -114,7 +179,6 @@ public class TowerPlacementCell : MonoBehaviour
             return false;
 
         int gold = ResourceManager.Instance != null ? ResourceManager.Instance.Gold : 0;
-        bool canPlaceCount = placer.TowerCount < TowerPlacer.MaxTowers || Occupant != null;
-        return gold >= cost && canPlaceCount;
+        return gold >= cost;
     }
 }

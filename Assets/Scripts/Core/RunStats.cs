@@ -11,6 +11,8 @@ public class RunStats : MonoBehaviour
     public int EighthNoteKills { get; private set; }
     public int DownbeatKills { get; private set; }
 
+    public int EliteKills { get; private set; }
+
     public event Action OnStatsChanged;
 
     void Awake()
@@ -50,10 +52,13 @@ public class RunStats : MonoBehaviour
         OnStatsChanged?.Invoke();
     }
 
-    public void RecordEnemyKill(EnemyKind kind)
+    public void RecordEnemyKill(EnemyKind kind, EliteTier eliteTier = EliteTier.None)
     {
         switch (kind)
         {
+            case EnemyKind.Elite:
+                EliteKills++;
+                break;
             case EnemyKind.Downbeat:
                 DownbeatKills++;
                 break;

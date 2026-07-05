@@ -7,7 +7,7 @@ public class SkillCooldownController : MonoBehaviour
     public static SkillCooldownController Instance { get; private set; }
 
     public const float OverloadStrikeCooldown = 10f;
-    public const float BpmBoostCooldown = 18f;
+    public const float ChainZapCooldown = 18f;
 
     readonly Dictionary<CommandType, float> _readyAt = new();
 
@@ -48,7 +48,7 @@ public class SkillCooldownController : MonoBehaviour
 
     public bool RequiresCooldown(CommandType type)
     {
-        return type == CommandType.OverloadStrike || type == CommandType.BPMBoost;
+        return type == CommandType.OverloadStrike || type == CommandType.ChainZap;
     }
 
     public bool TryConsume(CommandType type)
@@ -65,7 +65,7 @@ public class SkillCooldownController : MonoBehaviour
         float duration = type switch
         {
             CommandType.OverloadStrike => OverloadStrikeCooldown,
-            CommandType.BPMBoost => BpmBoostCooldown,
+            CommandType.ChainZap => ChainZapCooldown,
             _ => 0f
         };
 

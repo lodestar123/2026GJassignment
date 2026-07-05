@@ -5,19 +5,21 @@ using UnityEngine;
 public class Tower : MonoBehaviour
 {
     public const float DefaultRange = 2.5f;
+    public const float BaseVisualScale = 0.6f;
+    public const float HoverRadiusAtBaseScale = 0.32f;
 
     public TowerType towerType = TowerType.Beat;
     public float range = DefaultRange;
 
-    CircleCollider2D _rangeCollider;
+    CircleCollider2D _hoverCollider;
 
     public float Range => range;
+    public float HoverRadius => HoverRadiusAtBaseScale * (transform.localScale.x / BaseVisualScale);
 
     void Awake()
     {
-        _rangeCollider = GetComponent<CircleCollider2D>();
-        _rangeCollider.isTrigger = false;
-        ApplyRange();
+        _hoverCollider = GetComponent<CircleCollider2D>();
+        RefreshHoverCollider();
         if (GetComponent<TowerRangeVisualizer>() == null)
             gameObject.AddComponent<TowerRangeVisualizer>();
         if (GetComponent<TowerFireRecoil>() == null)
@@ -26,19 +28,29 @@ public class Tower : MonoBehaviour
 
     void OnValidate()
     {
-        ApplyRange();
+        RefreshHoverCollider();
     }
 
-    void ApplyRange()
+    public void RefreshHoverCollider()
     {
-        if (_rangeCollider == null)
-            _rangeCollider = GetComponent<CircleCollider2D>();
+        if (_hoverCollider == null)
+            _hoverCollider = GetComponent<CircleCollider2D>();
 
-        if (_rangeCollider != null)
+        if (_hoverCollider != null)
         {
-            _rangeCollider.isTrigger = false;
-            _rangeCollider.radius = range;
+            _hoverCollider.isTrigger = false;
+            _hoverCollider.radius = HoverRadius;
         }
+    }
+
+    void LateUpdate()
+    {
+        if (_hoverCollider == null)
+            return;
+
+        float r = HoverRadius;
+        if (!Mathf.Approximately(_hoverCollider.radius, r))
+            _hoverCollider.radius = r;
     }
 
     public bool IsEnemyInRange(EnemyHealth enemy)

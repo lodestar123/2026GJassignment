@@ -4,5 +4,7 @@ public enum CommandType
     RhythmShot,
     GoldPulse,
     OverloadStrike,
-    BPMBoost
+    ChainZap,
+    TempoUp,
+    TempoDown
 }

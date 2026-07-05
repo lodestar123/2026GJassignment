@@ -11,6 +11,7 @@ public class ResourceManager : MonoBehaviour
     public int Gold { get; private set; }
 
     public event Action<int> OnGoldChanged;
+    public event Action<int> OnGoldSpent;
 
     void Awake()
     {
@@ -46,6 +47,7 @@ public class ResourceManager : MonoBehaviour
 
         Gold -= amount;
         OnGoldChanged?.Invoke(Gold);
+        OnGoldSpent?.Invoke(amount);
         return true;
     }
 }

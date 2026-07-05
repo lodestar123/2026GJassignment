@@ -19,7 +19,6 @@ public class EnemyMovement : MonoBehaviour
         _waypointIndex = 0;
         _lateralOffset = lateralOffset;
         _health = GetComponent<EnemyHealth>();
-        _health.Configure(kind);
 
         if (_waypoints == null || _waypoints.Length == 0)
             return;
@@ -99,7 +98,7 @@ public class EnemyMovement : MonoBehaviour
 
     public static float RollLaneOffset(EnemyKind kind)
     {
-        return kind == EnemyKind.Downbeat
+        return kind == EnemyKind.Downbeat || kind == EnemyKind.Elite
             ? Random.Range(-0.28f, 0.28f)
             : Random.Range(-0.65f, 0.65f);
     }

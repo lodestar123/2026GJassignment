@@ -23,11 +23,12 @@ public static class ScoreCalculator
 
         int eighthKills = stats != null ? stats.EighthNoteKills : 0;
         int downbeatKills = stats != null ? stats.DownbeatKills : 0;
+        int eliteKills = stats != null ? stats.EliteKills : 0;
         int perfect = stats != null ? stats.PerfectCount : 0;
         int good = stats != null ? stats.GoodCount : 0;
         int miss = stats != null ? stats.MissCount : 0;
 
-        int combat = eighthKills * 80 + downbeatKills * 200;
+        int combat = eighthKills * 80 + downbeatKills * 200 + eliteKills * 320;
         int rhythm = perfect * 15 + good * 5;
         float elapsed = game != null ? game.ElapsedSeconds : 0f;
 

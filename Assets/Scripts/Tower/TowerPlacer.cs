@@ -2,13 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 타워 설치/교체/판매 — max 8 · 50% 환급 · BALANCE §2.
+/// 타워 설치/교체/판매/강화 · 50% 환급 · BALANCE §2.
 /// </summary>
 public class TowerPlacer : MonoBehaviour
 {
     public static TowerPlacer Instance { get; private set; }
-
-    public const int MaxTowers = 8;
 
     [SerializeField] Transform towerRoot;
 
@@ -67,6 +65,12 @@ public class TowerPlacer : MonoBehaviour
         if (cell == null)
             return;
 
+        if (!cell.IsUnlocked)
+        {
+            TryUnlockSlot(cell);
+            return;
+        }
+
         if (!TowerSelection.HasSelection)
             return;
 
@@ -78,11 +82,6 @@ public class TowerPlacer : MonoBehaviour
             RefundSell(cell.Occupant);
             RemoveTower(cell.Occupant, cell);
         }
-        else if (_towers.Count >= MaxTowers)
-        {
-            Debug.Log("[TowerPlacer] 최대 8기 — 빈 슬롯에만 교체 가능");
-            return;
-        }
 
         if (_resources == null || !_resources.TrySpendGold(cost))
         {
@@ -90,7 +89,59 @@ public class TowerPlacer : MonoBehaviour
             return;
         }
 
-        PlaceTower(cell, selected);
+        PlaceTower(cell, selected, cost);
+    }
+
+    public bool TryUnlockSlot(TowerPlacementCell cell)
+    {
+        if (cell == null || cell.IsUnlocked)
+            return true;
+
+        if (cell.UnlockGoldCost <= 0)
+        {
+            cell.SetUnlocked(true);
+            Debug.Log($"[TowerPlacer] Slot {cell.SlotIndex} 해금");
+            return true;
+        }
+
+        if (_resources == null || !_resources.TrySpendGold(cell.UnlockGoldCost))
+        {
+            Debug.Log($"[TowerPlacer] 슬롯 해금 골드 부족 ({cell.UnlockGoldCost}G)");
+            return false;
+        }
+
+        cell.SetUnlocked(true);
+        CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, cell.UnlockGoldCost);
+        Debug.Log($"[TowerPlacer] Slot {cell.SlotIndex} 해금 (-{cell.UnlockGoldCost}G)");
+        return true;
+    }
+
+    public bool TryUpgradeBeatTower(Tower tower)
+    {
+        if (tower == null || tower.towerType != TowerType.Beat)
+            return false;
+
+        var beat = tower.GetComponent<BeatTower>();
+        if (beat == null || !beat.CanUpgrade)
+            return false;
+
+        int cost = beat.NextUpgradeCost;
+        if (_resources == null || !_resources.TrySpendGold(cost))
+        {
+            Debug.Log($"[TowerPlacer] 강화 골드 부족 ({cost}G)");
+            return false;
+        }
+
+        if (!beat.TryUpgrade())
+        {
+            _resources.AddGold(cost);
+            return false;
+        }
+
+        CombatVfxService.Instance?.PlayGoldSpendPopup(tower.transform.position, cost);
+        Debug.Log($"[TowerPlacer] BeatTower Lv{beat.Level} (-{cost}G)");
+        TowerSellUI.Instance?.RefreshSelected();
+        return true;
     }
 
     public void SellTower(Tower tower)
@@ -104,7 +155,7 @@ public class TowerPlacer : MonoBehaviour
         TowerSellUI.Instance?.Hide();
     }
 
-    void PlaceTower(TowerPlacementCell cell, TowerType type)
+    void PlaceTower(TowerPlacementCell cell, TowerType type, int spentGold)
     {
         var go = new GameObject($"{type}Tower");
         go.transform.SetParent(towerRoot != null ? towerRoot : transform);
@@ -123,7 +174,7 @@ public class TowerPlacer : MonoBehaviour
         if (rangeCol == null)
             rangeCol = go.AddComponent<CircleCollider2D>();
         rangeCol.isTrigger = false;
-        rangeCol.radius = Tower.DefaultRange;
+        rangeCol.radius = Tower.HoverRadiusAtBaseScale;
 
         if (type == TowerType.Beat)
             go.AddComponent<BeatTower>();
@@ -135,12 +186,16 @@ public class TowerPlacer : MonoBehaviour
         _towers.Add(tower);
         _registry?.RegisterTower(tower);
 
+        CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, spentGold);
         CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position, type);
-        Debug.Log($"[TowerPlacer] {type} 설치 ({GetCost(type)}G)");
+        Debug.Log($"[TowerPlacer] {type} 설치 ({spentGold}G)");
     }
 
     void RemoveTower(Tower tower, TowerPlacementCell cell)
     {
+        if (TowerSellUI.Instance != null && TowerSellUI.Instance.IsShowing(tower))
+            TowerSellUI.Instance.Hide();
+
         _towers.Remove(tower);
         _registry?.UnregisterTower(tower);
 
@@ -156,7 +211,15 @@ public class TowerPlacer : MonoBehaviour
         if (_resources == null || tower == null)
             return;
 
-        int refund = GetCost(tower.towerType) / 2;
+        int invested = GetCost(tower.towerType);
+        if (tower.towerType == TowerType.Beat)
+        {
+            var beat = tower.GetComponent<BeatTower>();
+            if (beat != null)
+                invested = beat.GetTotalInvestedGold();
+        }
+
+        int refund = invested / 2;
         _resources.AddGold(refund);
         Debug.Log($"[TowerPlacer] 판매 환급 +{refund}G");
     }
@@ -185,7 +248,7 @@ public class TowerPlacer : MonoBehaviour
 }
 
 /// <summary>
-/// 타워 직접 클릭 → TowerSellUI.
+/// 타워 호버 → TowerSellUI.
 /// </summary>
 [RequireComponent(typeof(Tower))]
 public class TowerClickTarget : MonoBehaviour
@@ -194,15 +257,23 @@ public class TowerClickTarget : MonoBehaviour
 
     void Awake() => _tower = GetComponent<Tower>();
 
-    void OnMouseDown()
+    void OnMouseEnter()
+    {
+        if (!CanInteract())
+            return;
+
+        TowerSellUI.Resolve()?.Show(_tower);
+    }
+
+    bool CanInteract()
     {
         if (UnityEngine.EventSystems.EventSystem.current != null
             && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-            return;
+            return false;
 
         if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
-            return;
+            return false;
 
-        TowerSellUI.Instance?.Show(_tower);
+        return true;
     }
 }

@@ -44,11 +44,18 @@ public class JudgmentFlashUI : MonoBehaviour
     void Subscribe()
     {
         var detector = RhythmCommandDetector.Instance ?? FindAnyObjectByType<RhythmCommandDetector>();
-        if (detector == null)
-            return;
+        if (detector != null)
+        {
+            detector.OnCommandResolved -= OnCommandResolved;
+            detector.OnCommandResolved += OnCommandResolved;
+        }
 
-        detector.OnCommandResolved -= OnCommandResolved;
-        detector.OnCommandResolved += OnCommandResolved;
+        var fever = FeverTimeController.Instance ?? FindAnyObjectByType<FeverTimeController>();
+        if (fever != null)
+        {
+            fever.OnFeverActivated -= OnFeverActivated;
+            fever.OnFeverActivated += OnFeverActivated;
+        }
     }
 
     void Unsubscribe()
@@ -56,6 +63,23 @@ public class JudgmentFlashUI : MonoBehaviour
         var detector = RhythmCommandDetector.Instance ?? FindAnyObjectByType<RhythmCommandDetector>();
         if (detector != null)
             detector.OnCommandResolved -= OnCommandResolved;
+
+        var fever = FeverTimeController.Instance ?? FindAnyObjectByType<FeverTimeController>();
+        if (fever != null)
+            fever.OnFeverActivated -= OnFeverActivated;
+    }
+
+    void OnFeverActivated()
+    {
+        if (flashText == null)
+            return;
+
+        flashText.text = "<color=#FFB74D><size=120%>FEVER TIME!</size></color>\n<size=55%>DMG x1.5 | 6s</size>";
+        flashText.gameObject.SetActive(true);
+
+        if (_hideRoutine != null)
+            StopCoroutine(_hideRoutine);
+        _hideRoutine = StartCoroutine(HideAfter(displaySeconds));
     }
 
     void OnCommandResolved(CommandType type, JudgmentResult judgment)

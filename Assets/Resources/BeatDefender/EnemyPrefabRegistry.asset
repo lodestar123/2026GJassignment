@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 510deceeac787b943bd6b6a3b5c51a81, type: 3}
+  m_Name: EnemyPrefabRegistry
+  m_EditorClassIdentifier: BeatDefender::EnemyPrefabRegistry
+  eighthNote: {fileID: 280490415929433642, guid: 803337a51333d844397209b175bc72b4, type: 3}
+  downbeat: {fileID: 6992570619773469441, guid: e159c024646c51d4c87f22d4bebcee4e, type: 3}
+  elite: {fileID: 3528121847425922524, guid: 0d0f0e78ab9a4ff499968f4a36735910, type: 3}

@@ -77,11 +77,65 @@ public class CombatVfxService : MonoBehaviour
         SimpleAudio.Instance?.PlayGoldPulse();
     }
 
+    public void PlayGoldSpendPopup(Vector3 worldPos, int gold)
+    {
+        var spendColor = new Color(1f, 0.42f, 0.35f, 1f);
+        StartCoroutine(FloatingTextRoutine(worldPos + Vector3.up * 0.25f, $"-{gold}G", spendColor, 0.65f, 0.85f));
+        SpawnGoldSpendParticles(worldPos, gold);
+        SimpleAudio.Instance?.PlayGoldSpend();
+    }
+
+    void SpawnGoldSpendParticles(Vector3 pos, int gold)
+    {
+        int count = Mathf.Clamp(gold / 5, 4, 10);
+        var coinColor = new Color(1f, 0.82f, 0.22f, 1f);
+        for (int i = 0; i < count; i++)
+        {
+            var go = new GameObject("SpendCoin");
+            go.transform.SetParent(_poolRoot);
+            go.transform.position = pos + (Vector3)Random.insideUnitCircle * 0.12f;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = GreyboxSprites.Square;
+            sr.color = coinColor;
+            sr.sortingOrder = 24;
+            go.transform.localScale = Vector3.one * Random.Range(0.07f, 0.11f);
+            Vector2 vel = Vector2.up * Random.Range(0.55f, 1.05f)
+                + Random.insideUnitCircle * 0.18f;
+            StartCoroutine(GoldSpendParticleRoutine(go, sr, vel));
+        }
+    }
+
+    IEnumerator GoldSpendParticleRoutine(GameObject go, SpriteRenderer sr, Vector2 velocity)
+    {
+        float life = Random.Range(0.28f, 0.42f);
+        float elapsed = 0f;
+        Color start = sr.color;
+        Vector3 startScale = go.transform.localScale;
+        while (elapsed < life)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / life;
+            go.transform.position += (Vector3)(velocity * Time.deltaTime);
+            velocity *= 0.94f;
+            go.transform.localScale = startScale * (1f - t * 0.35f);
+            sr.color = new Color(start.r, start.g, start.b, start.a * (1f - t));
+            yield return null;
+        }
+
+        Destroy(go);
+    }
+
     public void PlayCoreHit(Vector3 corePos)
     {
         ScreenShake.Instance?.Shake(0.22f, 0.28f);
         SpawnHitParticles(corePos, new Color(1f, 0.2f, 0.15f, 1f), 16, 0.55f);
         SimpleAudio.Instance?.PlayCoreHit();
+    }
+
+    public void PlayCoreCrisisPulse(Vector3 corePos)
+    {
+        StartCoroutine(ExpandRingRoutine(corePos, 1.2f, new Color(1f, 0.15f, 0.1f, 0.65f)));
+        ScreenShake.Instance?.Shake(0.1f, 0.18f);
     }
 
     public void PlayTowerPlaced(Vector3 pos, TowerType type)
@@ -93,6 +147,51 @@ public class CombatVfxService : MonoBehaviour
     public void PlaySkillSuccess(CommandType type)
     {
         SimpleAudio.Instance?.PlaySkill(type);
+    }
+
+    public void PlayFeverActivated()
+    {
+        SimpleAudio.Instance?.PlayFeverActivate();
+    }
+
+    public void PlayChainZapBurst(Vector3 pos, bool isPrimary)
+    {
+        var color = isPrimary
+            ? new Color(1f, 0.85f, 0.25f, 0.95f)
+            : new Color(1f, 0.65f, 0.2f, 0.85f);
+        SpawnHitParticles(pos, color, isPrimary ? 10 : 6, isPrimary ? 0.5f : 0.35f);
+        if (isPrimary)
+            StartCoroutine(ExpandRingRoutine(pos, 0.5f, new Color(1f, 0.75f, 0.15f, 0.75f)));
+    }
+
+    public void PlayChainZapLink(Vector3 from, Vector3 to)
+    {
+        StartCoroutine(ChainLinkRoutine(from, to));
+    }
+
+    IEnumerator ChainLinkRoutine(Vector3 from, Vector3 to)
+    {
+        var color = new Color(1f, 0.78f, 0.2f, 1f);
+        var go = new GameObject("ChainLink");
+        go.transform.SetParent(_poolRoot);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = GreyboxSprites.Circle;
+        sr.color = color;
+        sr.sortingOrder = 26;
+        go.transform.localScale = Vector3.one * 0.14f;
+
+        const float duration = 0.08f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            go.transform.position = Vector3.Lerp(from, to, t);
+            yield return null;
+        }
+
+        SpawnHitParticles(to, color, 4, 0.3f);
+        Destroy(go);
     }
 
     IEnumerator ProjectileRoutine(Vector3 from, Vector3 to, Color color, float damage)
@@ -166,11 +265,36 @@ public class CombatVfxService : MonoBehaviour
 
     void SpawnDeathBurst(Vector3 pos, EnemyKind kind)
     {
-        Color color = kind == EnemyKind.Downbeat
-            ? new Color(0.85f, 0.35f, 1f, 1f)
-            : new Color(0.35f, 0.75f, 1f, 1f);
-        SpawnHitParticles(pos, color, kind == EnemyKind.Downbeat ? 18 : 12, 0.7f);
-        StartCoroutine(ExpandRingRoutine(pos, kind == EnemyKind.Downbeat ? 1.2f : 0.75f, color));
+        Color color = kind switch
+        {
+            EnemyKind.Elite => new Color(1f, 0.75f, 0.15f, 1f),
+            EnemyKind.Downbeat => new Color(0.85f, 0.35f, 1f, 1f),
+            _ => new Color(0.35f, 0.75f, 1f, 1f)
+        };
+
+        int particles = kind switch
+        {
+            EnemyKind.Elite => 22,
+            EnemyKind.Downbeat => 18,
+            _ => 12
+        };
+
+        float ring = kind switch
+        {
+            EnemyKind.Elite => 1.45f,
+            EnemyKind.Downbeat => 1.2f,
+            _ => 0.75f
+        };
+
+        SpawnHitParticles(pos, color, particles, 0.7f);
+        StartCoroutine(ExpandRingRoutine(pos, ring, color));
+    }
+
+    public void PlayEliteRegenPulse(Vector3 pos)
+    {
+        var color = new Color(0.35f, 1f, 0.55f, 0.75f);
+        SpawnHitParticles(pos, color, 8, 0.45f);
+        StartCoroutine(ExpandRingRoutine(pos, 0.5f, color));
     }
 
     IEnumerator ParticleRoutine(GameObject go, SpriteRenderer sr, Vector2 velocity)
@@ -218,10 +342,19 @@ public class CombatVfxService : MonoBehaviour
 
     void SpawnDamagePopup(Vector3 pos, float damage)
     {
-        StartCoroutine(FloatingTextRoutine(pos + Vector3.up * 0.15f, damage.ToString("0"), GetDamageColor(damage)));
+        StartCoroutine(FloatingTextRoutine(
+            pos + Vector3.up * 0.15f, FormatDamagePopup(damage), GetDamageColor(damage)));
     }
 
-    IEnumerator FloatingTextRoutine(Vector3 pos, string text, Color color)
+    static string FormatDamagePopup(float damage) =>
+        damage >= 10f ? damage.ToString("0") : damage.ToString("0.#");
+
+    IEnumerator FloatingTextRoutine(
+        Vector3 pos,
+        string text,
+        Color color,
+        float duration = 0.55f,
+        float rise = 0.65f)
     {
         var go = new GameObject("FloatingText");
         go.transform.SetParent(_poolRoot);
@@ -229,20 +362,20 @@ public class CombatVfxService : MonoBehaviour
 
         var tmp = go.AddComponent<TextMeshPro>();
         tmp.text = text;
-        tmp.fontSize = 3.2f;
+        tmp.fontSize = text.StartsWith("-") ? 3.6f : 3.2f;
+        tmp.fontStyle = text.StartsWith("-") ? FontStyles.Bold : FontStyles.Normal;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = color;
         if (BeatDefenderFonts.Pretendard != null)
             tmp.font = BeatDefenderFonts.Pretendard;
 
         float elapsed = 0f;
-        const float duration = 0.55f;
         Vector3 start = pos;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
-            go.transform.position = start + Vector3.up * (t * 0.65f);
+            go.transform.position = start + Vector3.up * (t * rise);
             tmp.color = new Color(color.r, color.g, color.b, 1f - t);
             yield return null;
         }

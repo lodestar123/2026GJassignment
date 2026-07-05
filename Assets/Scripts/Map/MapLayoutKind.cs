@@ -1,5 +1,4 @@
 public enum MapLayoutKind
 {
-    Classic,
-    SpiralIslands
+    Classic
 }

@@ -2,8 +2,9 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 2/4 (2박 = 한 사이클). 매 사이클 끝에 OnMeasureEnd(판정) → OnMeasureStart(초기화).
-/// 메트로놈 tick = 0s(1박), 절반(2박) — 판정은 사이클 끝에만.
+/// 2/4 (2박 = 한 사이클).
+/// 마디 경계 = wall-clock · OnBeat = baseline felt(0.24s) — Core·적·메트로놈과 타임라인 adj=0 정렬.
+/// 판정·playhead = baseline + 감도 조정 (RhythmInputSettings).
 /// </summary>
 [DefaultExecutionOrder(-50)]
 public class BeatClock : MonoBehaviour
@@ -12,7 +13,6 @@ public class BeatClock : MonoBehaviour
 
     public const float ReferenceMeasureDuration = 1f;
     public const int BeatsPerMeasure = 2;
-    public const float BoostMeasureScale = 0.8f; // 120 -> 150 BPM (x0.8 duration, not x0.5)
 
     public event Action OnBeat;
     public event Action OnMeasureStart;
@@ -33,20 +33,19 @@ public class BeatClock : MonoBehaviour
         }
     }
 
-    public float EffectiveMeasureDuration => measureDurationSeconds * (IsBoosted ? BoostMeasureScale : 1f);
+    public float EffectiveMeasureDuration => measureDurationSeconds * TempoScale;
+    public float TempoScale =>
+        TempoController.Instance != null ? TempoController.Instance.CurrentScale : 1f;
     public float PatternTimeScale => EffectiveMeasureDuration / ReferenceMeasureDuration;
     public float BeatInterval => EffectiveMeasureDuration / BeatsPerMeasure;
     public float CurrentBpm => 60f / BeatInterval;
-    public bool IsBoosted => _boostRemaining > 0f;
-    public float BoostRemaining => _boostRemaining;
     public float MeasureStartTime { get; private set; }
     public int BeatIndexInMeasure { get; private set; }
     public bool IsDownbeat => BeatIndexInMeasure == 0;
 
-    float _beatTimer;
-    float _boostRemaining;
     float _lastEffectiveMeasureDuration;
     int _beatsSinceCycleStart;
+    bool _cycleRunning;
 
     void Awake()
     {
@@ -60,10 +59,7 @@ public class BeatClock : MonoBehaviour
         _lastEffectiveMeasureDuration = EffectiveMeasureDuration;
     }
 
-    void Start()
-    {
-        BeginCycle();
-    }
+    void Start() => BeginCycle();
 
     void OnDestroy()
     {
@@ -73,39 +69,30 @@ public class BeatClock : MonoBehaviour
 
     void Update()
     {
-        float dt = Time.timeScale > 0f ? Time.deltaTime : Time.unscaledDeltaTime;
-
-        if (_boostRemaining > 0f)
-        {
-            _boostRemaining -= dt;
-            if (_boostRemaining <= 0f)
-            {
-                _boostRemaining = 0f;
-                NotifyTimingChanged();
-            }
-        }
+        if (!_cycleRunning)
+            return;
 
         if (!Mathf.Approximately(_lastEffectiveMeasureDuration, EffectiveMeasureDuration))
-            ResyncBeatPhase();
+            NotifyTimingChanged();
 
-        if (Time.time - MeasureStartTime >= EffectiveMeasureDuration)
+        while (Time.time - MeasureStartTime >= EffectiveMeasureDuration)
             EndCycleAndBeginNext();
 
-        _beatTimer += dt;
-        while (_beatTimer >= BeatInterval)
-        {
-            _beatTimer -= BeatInterval;
+        float visualElapsed = GetVisualBeatElapsedInMeasure();
+        if (visualElapsed < 0f)
+            return;
+
+        int beatIndex = Mathf.FloorToInt(visualElapsed / BeatInterval);
+        while (_beatsSinceCycleStart <= beatIndex && _beatsSinceCycleStart < BeatsPerMeasure)
             FireBeat();
-        }
     }
 
     void BeginCycle()
     {
+        _cycleRunning = true;
         MeasureStartTime = Time.time;
-        _beatTimer = 0f;
         _beatsSinceCycleStart = 0;
         OnMeasureStart?.Invoke();
-        FireBeat();
     }
 
     void EndCycleAndBeginNext()
@@ -114,16 +101,7 @@ public class BeatClock : MonoBehaviour
 
         MeasureStartTime += EffectiveMeasureDuration;
         _beatsSinceCycleStart = 0;
-        _beatTimer = 0f;
         OnMeasureStart?.Invoke();
-        FireBeat();
-    }
-
-    void ResyncBeatPhase()
-    {
-        NotifyTimingChanged();
-        float elapsed = Mathf.Max(0f, Time.time - MeasureStartTime);
-        _beatTimer = BeatInterval > 0f ? elapsed % BeatInterval : 0f;
     }
 
     void FireBeat()
@@ -139,20 +117,26 @@ public class BeatClock : MonoBehaviour
         OnTimingChanged?.Invoke(PatternTimeScale);
     }
 
-    public float SecondsSinceMeasureStart()
+    /// <summary>OnBeat·Core 펄스 축 — baseline offset만 (감도 슬라이더와 무관).</summary>
+    public static float GetVisualBeatOffsetSeconds()
     {
-        return Time.time - MeasureStartTime;
+        return RhythmInputSettings.BaselineInputOffsetSeconds;
     }
 
-    /// <summary>특정 시각 기준 마디 내 경과(타임라인·playhead와 동일 축).</summary>
-    public float SecondsSinceMeasureStartAt(float rawTime)
+    public float GetVisualBeatElapsedInMeasure()
     {
-        return rawTime - MeasureStartTime;
+        return (Time.time - GetVisualBeatOffsetSeconds()) - MeasureStartTime;
     }
 
-    public void SetBoost(float durationSeconds)
+    public float SecondsSinceMeasureStart() => Time.time - MeasureStartTime;
+
+    public float SecondsSinceMeasureStartAt(float rawTime) => rawTime - MeasureStartTime;
+
+    public void RefreshTempo()
     {
-        _boostRemaining = Mathf.Max(_boostRemaining, durationSeconds);
+        if (!_cycleRunning)
+            return;
+
         NotifyTimingChanged();
     }
 

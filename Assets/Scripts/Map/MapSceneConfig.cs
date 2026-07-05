@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 씬별 활성 맵 레이아웃 — GameScene(Classic) / GameSceneSpiral(SpiralIslands) 등.
+/// 씬별 활성 맵 레이아웃 — GameScene(Classic).
 /// </summary>
 public class MapSceneConfig : MonoBehaviour
 {

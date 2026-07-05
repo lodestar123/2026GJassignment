@@ -34,7 +34,20 @@ public static class RhythmPatternLibrary
         new RhythmPattern(CommandType.GoldPulse, new[] { 0f, 0.5f }),
         new RhythmPattern(CommandType.RhythmShot, new[] { 0f, 0.5f, 0.75f }),
         new RhythmPattern(CommandType.OverloadStrike, new[] { 0f, 0.25f, 0.5f, 0.75f, 0.875f }),
-        new RhythmPattern(CommandType.BPMBoost, new[] { 0f })
+        new RhythmPattern(CommandType.ChainZap, new[] { 0f, 0.125f, 0.25f, 0.5f, 0.625f, 0.75f }),
+        new RhythmPattern(CommandType.TempoUp, new[] { 0f, 0.25f }),
+        new RhythmPattern(CommandType.TempoDown, new[] { 0f, 0.75f })
+    };
+
+    /// <summary>Scroll UI · 휠 스왑 순서.</summary>
+    public static readonly CommandType[] SelectableOrder =
+    {
+        CommandType.GoldPulse,
+        CommandType.RhythmShot,
+        CommandType.OverloadStrike,
+        CommandType.ChainZap,
+        CommandType.TempoUp,
+        CommandType.TempoDown
     };
 
     public static readonly Dictionary<int, List<RhythmPattern>> ByTapCount = BuildLookup();
@@ -42,6 +55,70 @@ public static class RhythmPatternLibrary
     public static float GetJudgmentGood(float timeScale) => JudgmentGoodSeconds * timeScale;
     public static float GetJudgmentPerfect(float timeScale) => JudgmentPerfectSeconds * timeScale;
     public static float GetMinVisualTapGap(float timeScale) => MinVisualTapGapReference * timeScale;
+
+    public static string FormatPatternHint(CommandType type, float measureDuration)
+    {
+        if (!TryGetByType(type, out var pattern))
+            return "";
+
+        var parts = new string[pattern.TapCount];
+        for (int i = 0; i < pattern.TapCount; i++)
+            parts[i] = $"{pattern.HitFractions[i] * measureDuration:0.##}";
+
+        return $"{pattern.TapCount} taps: {string.Join(", ", parts)}s";
+    }
+
+    public static bool TryGetByType(CommandType type, out RhythmPattern pattern)
+    {
+        foreach (var p in All)
+        {
+            if (p.Type != type)
+                continue;
+
+            pattern = p;
+            return true;
+        }
+
+        pattern = default;
+        return false;
+    }
+
+    public static bool TryMatchSinglePattern(
+        IReadOnlyList<float> taps,
+        float measureDuration,
+        float scale,
+        RhythmPattern pattern,
+        out JudgmentResult judgment)
+    {
+        judgment = JudgmentResult.Miss;
+        if (taps == null || taps.Count != pattern.TapCount)
+            return false;
+
+        judgment = JudgeHitTimes(taps, pattern.GetExpectedHitTimes(measureDuration), scale);
+        return judgment != JudgmentResult.Miss;
+    }
+
+    /// <summary>선택된 패턴 기준 — 다음 슬롯을 아직 칠 수 있는지.</summary>
+    public static bool CanExtendPattern(
+        IReadOnlyList<float> taps,
+        float nowRel,
+        float measureDuration,
+        float scale,
+        RhythmPattern pattern)
+    {
+        if (taps == null || taps.Count == 0)
+            return true;
+
+        if (taps.Count >= pattern.TapCount)
+            return false;
+
+        float good = GetJudgmentGood(scale);
+        var expected = pattern.GetExpectedHitTimes(measureDuration);
+        if (!PrefixMatches(taps, expected, good))
+            return false;
+
+        return nowRel <= expected[taps.Count] + good;
+    }
 
     public static bool TryGetByTapCount(int tapCount, out RhythmPattern pattern)
     {

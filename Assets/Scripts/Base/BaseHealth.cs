@@ -49,6 +49,8 @@ public class BaseHealth : MonoBehaviour
         CurrentHp = Mathf.Max(0, CurrentHp - amount);
         OnHpChanged?.Invoke(CurrentHp, maxHp);
         CombatVfxService.Instance?.PlayCoreHit(transform.position);
+        if (CurrentHp == 1)
+            CombatVfxService.Instance?.PlayCoreCrisisPulse(transform.position);
 
         if (!IsAlive)
             OnDestroyed?.Invoke();

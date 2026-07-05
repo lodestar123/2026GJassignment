@@ -49,7 +49,7 @@
 | **BeatTower DPS** | Last **1.2s** Space → **2 dmg**/beat; else **0.6** fallback — **BeatTower only** |
 | RhythmShot | **BeatTowers only** FireOnce(2) |
 | **OverloadStrike** | 5 tap, 10s CD → enemies in **StrikeTower** circles: **8 dmg once each** (deduped) |
-| **BPMBoost** | **1 tap**, 18s CD → BoostTower circles: **4 dmg once each** (deduped) + measure×0.8 for 6s |
+| **BPMBoost** | **6 tap**, 18s CD → BoostTower circles: **4 dmg once each** (deduped) + measure×0.8 for 6s |
 | COOLDOWN attempt | **MISS** |
 | Judgment | 탭 수 + **타이밍** 모두 일치해야 성립 · GOOD **±0.22s** · PERFECT **±0.11s** (× PatternTimeScale) |
 | Core HP | **3** |
@@ -132,7 +132,7 @@ Assets/Scripts/
 | GoldPulse | 2 | 0, 0.5 | AddGold(10) |
 | RhythmShot | 3 | 0, 0.5, 0.75 | **BeatTowers** FireOnce (2 dmg) |
 | **OverloadStrike** | 5 | 0, 0.25, 0.5, 0.75, 0.875 | Deduped **8 dmg**/enemy in Strike circles |
-| BPMBoost | 1 | 0 | Deduped **4 dmg** + SetBoost(6f) · measure **×0.8** |
+| BPMBoost | **6** | 0, 0.125, 0.25, 0.5, 0.625, 0.75 | Deduped **4 dmg** + SetBoost(6f) · measure **×0.8** |
 
 ### BeatTower beat-sync
 
@@ -223,6 +223,7 @@ Assets/Scripts/
 
 ### Phase E — Juice · 제출
 
+- [ ] **BGM + SFX polish** — 120BPM BGM 1곡 · 타격/스킬/마일스톤 SFX (후순위, 체감 필수)
 - [ ] RESOURCES §M items
 - [ ] Windows build · [SUBMISSION.md](./SUBMISSION.md)
 
@@ -257,6 +258,7 @@ Assets/Scripts/
 | 2026-07-04 | **Phase D** — StartScene, Pause, Practice Additive, ResultScreen, ScoreCalculator |
 | 2026-07-04 | **Phase C** — MAP, PlacementGrid, TowerPlacer, ContinuousSpawner, GameManager |
 | 2026-07-04 | **Phase B** — GameHudUI, BeatPulseRailUI, RhythmScrollUI, TowerTypeSelectUI, SceneBuilder Phase B |
+| 2026-07-05 | **피버 8연속** · MatchMilestone(30/57/87/100/110) · Core 위기 연출 · BGM TODO |
 
 ---
 

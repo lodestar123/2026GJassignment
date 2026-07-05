@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 입력 felt 보정. Baseline(0.24s) + 플레이어 조정(0 = 기본 감도).
-/// 설정 UI "감도 0" → 실제 offset 0.24s.
+/// 입력 felt 보정. Baseline(0.24s) + 플레이어 조정(0 = baseline).
+/// 설정 UI "감도 0" → 적용 offset 0.24s. OnBeat 연출은 baseline만 (BeatClock).
 /// </summary>
 public class RhythmInputSettings : MonoBehaviour
 {
     public const string PlayerPrefsAdjustmentKey = "BeatDefender.InputOffsetAdjustment";
     public const string LegacyAbsoluteOffsetKey = "BeatDefender.InputOffsetSeconds";
+    const string BaselineVersionKey = "BeatDefender.InputOffsetBaselineVersion";
+    const int CurrentBaselineVersion = 2;
 
     /// <summary>튜닝된 기본 offset — 플레이어 감도 0일 때 적용.</summary>
     public const float BaselineInputOffsetSeconds = 0.24f;
@@ -41,7 +43,7 @@ public class RhythmInputSettings : MonoBehaviour
     /// <summary>플레이어 감도 조정(0 = baseline).</summary>
     public float InputOffsetAdjustment => inputOffsetAdjustment;
 
-    /// <summary>실제 적용 offset = Baseline + Adjustment.</summary>
+    /// <summary>실제 적용 offset = Baseline + Adjustment (판정·타임라인).</summary>
     public float InputOffsetSeconds => BaselineInputOffsetSeconds + inputOffsetAdjustment;
 
     void Awake()
@@ -73,9 +75,17 @@ public class RhythmInputSettings : MonoBehaviour
             Instance = null;
     }
 
-    public float AdjustTapTime(float rawTime)
+    public float AdjustTapTime(float rawTime) => rawTime - InputOffsetSeconds;
+
+    public static float GetAppliedOffsetSeconds()
     {
-        return rawTime - InputOffsetSeconds;
+        return Instance != null ? Instance.InputOffsetSeconds : DefaultInputOffsetSeconds;
+    }
+
+    /// <summary>판정·타임라인 felt 마디 내 경과.</summary>
+    public static float GetFeltElapsedInMeasure(float wallTime, float measureStartTime)
+    {
+        return (wallTime - GetAppliedOffsetSeconds()) - measureStartTime;
     }
 
     /// <summary>설정 UI — 감도 0이면 baseline(0.24s).</summary>
@@ -89,7 +99,10 @@ public class RhythmInputSettings : MonoBehaviour
         OnInputOffsetChanged?.Invoke(InputOffsetSeconds);
 
         if (persist)
+        {
             PlayerPrefs.SetFloat(PlayerPrefsAdjustmentKey, inputOffsetAdjustment);
+            PlayerPrefs.SetInt(BaselineVersionKey, CurrentBaselineVersion);
+        }
     }
 
     /// <summary>절대 offset 직접 지정(테스트·레거시). adjustment = absolute − baseline.</summary>
@@ -111,21 +124,37 @@ public class RhythmInputSettings : MonoBehaviour
 
     void LoadAdjustmentFromPlayerPrefs()
     {
+        int version = PlayerPrefs.GetInt(BaselineVersionKey, 0);
+
+        if (version < CurrentBaselineVersion)
+        {
+            if (version == 1)
+            {
+                inputOffsetAdjustment = PlayerPrefs.HasKey(PlayerPrefsAdjustmentKey)
+                    ? ClampAdjustment(PlayerPrefs.GetFloat(PlayerPrefsAdjustmentKey, 0f))
+                    : 0f;
+            }
+            else if (PlayerPrefs.HasKey(PlayerPrefsAdjustmentKey))
+            {
+                inputOffsetAdjustment = ClampAdjustment(
+                    PlayerPrefs.GetFloat(PlayerPrefsAdjustmentKey, 0f));
+            }
+            else if (PlayerPrefs.HasKey(LegacyAbsoluteOffsetKey))
+            {
+                float legacyAbsolute = PlayerPrefs.GetFloat(LegacyAbsoluteOffsetKey);
+                inputOffsetAdjustment = ClampAdjustment(legacyAbsolute - BaselineInputOffsetSeconds);
+                PlayerPrefs.DeleteKey(LegacyAbsoluteOffsetKey);
+            }
+
+            PlayerPrefs.SetFloat(PlayerPrefsAdjustmentKey, inputOffsetAdjustment);
+            PlayerPrefs.SetInt(BaselineVersionKey, CurrentBaselineVersion);
+            return;
+        }
+
         if (PlayerPrefs.HasKey(PlayerPrefsAdjustmentKey))
         {
             inputOffsetAdjustment = ClampAdjustment(
                 PlayerPrefs.GetFloat(PlayerPrefsAdjustmentKey, 0f));
-            return;
-        }
-
-        if (PlayerPrefs.HasKey(LegacyAbsoluteOffsetKey))
-        {
-            float legacyAbsolute = PlayerPrefs.GetFloat(LegacyAbsoluteOffsetKey);
-            inputOffsetAdjustment = ClampAdjustment(legacyAbsolute - BaselineInputOffsetSeconds);
-            PlayerPrefs.SetFloat(PlayerPrefsAdjustmentKey, inputOffsetAdjustment);
-            PlayerPrefs.DeleteKey(LegacyAbsoluteOffsetKey);
-            Debug.Log(
-                $"[RhythmInputSettings] 레거시 offset {legacyAbsolute:0.###}s → adj {inputOffsetAdjustment:0.###}s");
         }
     }
 

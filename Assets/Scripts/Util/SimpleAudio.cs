@@ -76,12 +76,12 @@ public class SimpleAudio : MonoBehaviour
             return;
 
         bool downbeat = BeatClock.Instance != null && BeatClock.Instance.IsDownbeat;
-        bool boosted = BeatClock.Instance != null && BeatClock.Instance.IsBoosted;
 
         float frequency = downbeat ? downbeatTickHz : regularTickHz;
         float duration = downbeat ? downbeatTickDuration : regularTickDuration;
         float volume = metronomeVolume * (downbeat ? downbeatVolumeMultiplier : 1f) * _rhythmVolumeMultiplier;
-        float pitch = boosted ? 1.2f : 1f;
+        float tempoScale = BeatClock.Instance != null ? BeatClock.Instance.TempoScale : 1f;
+        float pitch = tempoScale > 0f ? 1f / tempoScale : 1f;
 
         PlayBeep(frequency, duration, volume, pitch);
     }
@@ -141,6 +141,16 @@ public class SimpleAudio : MonoBehaviour
         PlayBeep(980f, 0.06f, sfxVolume * 0.35f, 1.25f);
     }
 
+    public void PlayGoldSpend()
+    {
+        PlayBeep(420f, 0.05f, sfxVolume * 0.28f, 0.85f);
+    }
+
+    public void PlayFeverActivate()
+    {
+        PlayBeep(720f, 0.08f, sfxVolume * 0.38f, 1.15f);
+    }
+
     public void PlayOverloadStrike()
     {
         PlayBeep(240f, 0.1f, sfxVolume * 0.4f, 0.75f);
@@ -151,8 +161,10 @@ public class SimpleAudio : MonoBehaviour
         float hz = type switch
         {
             CommandType.RhythmShot => 880f,
-            CommandType.BPMBoost => 720f,
+            CommandType.ChainZap => 640f,
             CommandType.OverloadStrike => 360f,
+            CommandType.TempoUp => 920f,
+            CommandType.TempoDown => 480f,
             _ => 660f
         };
         PlayBeep(hz, 0.045f, sfxVolume * 0.32f, 1.05f);

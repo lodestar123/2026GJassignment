@@ -152,6 +152,7 @@ public class ResultScreenUI : MonoBehaviour
         int hp = core != null ? core.CurrentHp : 0;
         int eighth = stats != null ? stats.EighthNoteKills : 0;
         int downbeat = stats != null ? stats.DownbeatKills : 0;
+        int elite = stats != null ? stats.EliteKills : 0;
         int perfect = stats != null ? stats.PerfectCount : 0;
         int good = stats != null ? stats.GoodCount : 0;
         int miss = stats != null ? stats.MissCount : 0;
@@ -160,14 +161,14 @@ public class ResultScreenUI : MonoBehaviour
         if (result.Cleared)
         {
             return
-                $"HP {hp}  |  8th {eighth}  |  Down {downbeat}\n" +
+                $"HP {hp}  |  8th {eighth}  |  Down {downbeat}  |  Elite {elite}\n" +
                 $"P{perfect} G{good} M{miss}\n" +
                 $"Surv +{result.SurvivalBonus}  Def +{result.DefenseBonus}  " +
                 $"Fight +{result.CombatBonus}  Rhythm +{result.RhythmBonus}";
         }
 
         return
-            $"Survived {survivalSec}s  |  8th {eighth}  |  Down {downbeat}\n" +
+            $"Survived {survivalSec}s  |  8th {eighth}  |  Down {downbeat}  |  Elite {elite}\n" +
             $"P{perfect} G{good} M{miss}\n" +
             $"Fight +{result.CombatBonus}  Rhythm +{result.RhythmBonus}  Time +{result.TimeBonus}";
     }

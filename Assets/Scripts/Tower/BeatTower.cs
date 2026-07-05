@@ -3,34 +3,80 @@ using UnityEngine;
 [RequireComponent(typeof(Tower))]
 public class BeatTower : MonoBehaviour
 {
-    public const float ActiveDamage = 2f;
-    public const float FallbackDamage = 0.6f;
-    public const float InputWindowSeconds = 1.2f;
+    [SerializeField] int level = 1;
 
     Tower _tower;
-    RhythmInputRecorder _input;
+    int _upgradeGoldSpent;
+    bool _subscribed;
+
+    public int Level => level;
+    public int UpgradeGoldSpent => _upgradeGoldSpent;
+    public float ActiveDamage => BeatTowerUpgrade.GetActiveDamage(level);
+    public float FallbackDamage => BeatTowerUpgrade.GetFallbackDamage(level);
+    public bool CanUpgrade => BeatTowerUpgrade.CanUpgrade(level);
+    public int NextUpgradeCost => BeatTowerUpgrade.GetUpgradeCost(level);
 
     void Awake()
     {
         _tower = GetComponent<Tower>();
         _tower.towerType = TowerType.Beat;
-        _input = FindAnyObjectByType<RhythmInputRecorder>();
+        level = Mathf.Clamp(level, 1, BeatTowerUpgrade.MaxLevel);
         TowerRegistry.Instance?.Register(this);
         TowerRegistry.Instance?.RegisterTower(_tower);
+        ApplyLevelVisual();
     }
 
-    void Start()
-    {
-        if (BeatClock.Instance != null)
-            BeatClock.Instance.OnBeat += OnBeat;
-    }
+    void OnEnable() => TrySubscribe();
+    void Start() => TrySubscribe();
 
     void OnDestroy()
     {
-        if (BeatClock.Instance != null)
-            BeatClock.Instance.OnBeat -= OnBeat;
+        TryUnsubscribe();
         TowerRegistry.Instance?.Unregister(this);
         TowerRegistry.Instance?.UnregisterTower(_tower);
+    }
+
+    void TrySubscribe()
+    {
+        if (_subscribed || BeatClock.Instance == null)
+            return;
+
+        BeatClock.Instance.OnBeat -= OnBeat;
+        BeatClock.Instance.OnBeat += OnBeat;
+        _subscribed = true;
+    }
+
+    void TryUnsubscribe()
+    {
+        if (BeatClock.Instance != null)
+            BeatClock.Instance.OnBeat -= OnBeat;
+
+        _subscribed = false;
+    }
+
+    void OnDisable() => TryUnsubscribe();
+
+    public bool TryUpgrade()
+    {
+        if (!CanUpgrade)
+            return false;
+
+        int cost = NextUpgradeCost;
+        _upgradeGoldSpent += cost;
+        level++;
+        ApplyLevelVisual();
+        return true;
+    }
+
+    public int GetTotalInvestedGold()
+    {
+        return TowerPlacer.GetCost(TowerType.Beat) + _upgradeGoldSpent;
+    }
+
+    void ApplyLevelVisual()
+    {
+        float scale = 0.6f + (level - 1) * 0.06f;
+        transform.localScale = Vector3.one * scale;
     }
 
     void OnBeat()
@@ -38,9 +84,7 @@ public class BeatTower : MonoBehaviour
         if (Time.timeScale <= 0f)
             return;
 
-        float damage = (_input != null && _input.HasRecentInput(InputWindowSeconds))
-            ? ActiveDamage
-            : FallbackDamage;
+        float damage = FallbackDamage;
 
         var target = _tower.GetPathLeaderInRange();
         if (target != null)
@@ -51,12 +95,13 @@ public class BeatTower : MonoBehaviour
         }
     }
 
-    public bool FireOnce(float damage)
+    public bool FireOnce(float damageOverride = -1f)
     {
         var target = _tower.GetPathLeaderInRange();
         if (target == null)
             return false;
 
+        float damage = damageOverride >= 0f ? damageOverride : ActiveDamage;
         CombatVfxService.Instance?.PlayTowerShot(
             transform.position, target.transform.position, _tower.towerType, damage, transform);
         target.TakeDamage(damage);

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 314905d2d2bbedf47a295035c991cff3, type: 3}
+  m_Name: EnemyVisualConfig
+  m_EditorClassIdentifier: BeatDefender::EnemyVisualConfig
+  eighthNoteWalkCycle:
+  - {fileID: -4671002821794697735, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: -4302712358421161181, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: -6584867642684400644, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: 9221104837389750854, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: 8341564378948555501, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: -6931659619686348064, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: -1329959587523815238, guid: b29c0873642c4894c87de9809f880705, type: 3}
+  - {fileID: -6387681380065529421, guid: b29c0873642c4894c87de9809f880705, type: 3}

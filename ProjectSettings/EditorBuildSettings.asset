@@ -17,8 +17,5 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/PracticeScene.unity
     guid: bdf6f133314706844bff03a9ce7b0512
-  - enabled: 1
-    path: Assets/Scenes/GameSceneSpiral.unity
-    guid: 0f7415e73b7eb784c8a50758dd68cdf2
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

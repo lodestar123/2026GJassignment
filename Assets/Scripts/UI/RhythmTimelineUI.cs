@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// offset 적용 felt 시간 — playhead·mark 동일 축, duration 대비 선형(가속 없음).
-/// InputOffset 조절 시 마커가 playhead 박자와 맞춰짐.
+/// offset felt — playhead·탭 마커·판정. OnBeat(Core 등)는 BeatClock baseline felt.
+/// Scroll 선택 패턴의 HitFraction 위치에 가이드 선 표시.
 /// </summary>
 [DefaultExecutionOrder(200)]
 public class RhythmTimelineUI : MonoBehaviour
@@ -21,8 +21,11 @@ public class RhythmTimelineUI : MonoBehaviour
 
     [SerializeField] RectTransform playhead;
     [SerializeField] RectTransform markersRoot;
-    [SerializeField] Vector2 playheadSize = new(3f, 20f);
-    [SerializeField] Vector2 markerSize = new(2f, 14f);
+    [SerializeField] RectTransform guidesRoot;
+    [SerializeField] Vector2 playheadSize = new(5f, 34f);
+    [SerializeField] Vector2 markerSize = new(5f, 30f);
+    [SerializeField] Vector2 guideSize = new(4f, 32f);
+    [SerializeField, Range(0.15f, 0.95f)] float guideAlpha = 0.78f;
 
     [Header("Mark range (--|---|--)")]
     [SerializeField, Range(0.02f, 0.25f)]
@@ -39,12 +42,16 @@ public class RhythmTimelineUI : MonoBehaviour
     float markerFadeSeconds = 0.55f;
 
     readonly List<TapMarkerVisual> _activeMarkers = new();
+    readonly List<Image> _guideLines = new();
     int _markerSequence;
     bool _subscribed;
+    bool _selectorSubscribed;
+    CommandType _lastGuideType = CommandType.None;
 
     void Awake()
     {
         EnforceSafeFadeValues();
+        ApplyTimelineLayout();
         ResolveReferences();
     }
 
@@ -59,21 +66,41 @@ public class RhythmTimelineUI : MonoBehaviour
             markerHoldSeconds = 0.65f;
     }
 
-    void OnEnable() => TrySubscribe();
-    void Start() => TrySubscribe();
+    void OnEnable()
+    {
+        TrySubscribe();
+        TrySubscribeSelector();
+        RefreshPatternGuides();
+    }
+
+    void Start()
+    {
+        TrySubscribe();
+        TrySubscribeSelector();
+        RefreshPatternGuides();
+    }
 
     void OnDisable()
     {
         TryUnsubscribe();
+        TryUnsubscribeSelector();
         ClearAllMarkersImmediate();
+        ClearGuides();
     }
 
-    void OnDestroy() => TryUnsubscribe();
+    void OnDestroy()
+    {
+        TryUnsubscribe();
+        TryUnsubscribeSelector();
+    }
 
     void Update()
     {
         if (!_subscribed)
             TrySubscribe();
+
+        if (!_selectorSubscribed)
+            TrySubscribeSelector();
 
         UpdatePlayhead();
         UpdateMarkerFade();
@@ -87,14 +114,72 @@ public class RhythmTimelineUI : MonoBehaviour
         if (markersRoot == null)
             markersRoot = transform.Find("TrackArea/Markers") as RectTransform;
 
-        EnsureMarkersDrawOnTop();
+        if (guidesRoot == null)
+            guidesRoot = transform.Find("TrackArea/Guides") as RectTransform;
+
+        EnsureDrawOrder();
     }
 
-    void EnsureMarkersDrawOnTop()
+    void ApplyTimelineLayout()
     {
-        if (markersRoot == null || playhead == null)
+        playheadSize = new Vector2(5f, 34f);
+        markerSize = new Vector2(5f, 30f);
+        guideSize = new Vector2(4f, 32f);
+        guideAlpha = 0.78f;
+
+        var root = GetComponent<RectTransform>();
+        if (root != null)
+        {
+            root.sizeDelta = new Vector2(Mathf.Max(root.sizeDelta.x, 560f), 44f);
+            root.anchoredPosition = new Vector2(root.anchoredPosition.x, 16f);
+        }
+
+        var track = transform.Find("TrackArea") as RectTransform;
+        if (track == null)
             return;
 
+        StretchRect(track, 10f, 8f, -10f, -8f);
+        ResizeBar(track, "CapLeft", new Vector2(4f, 36f));
+        ResizeBar(track, "CapRight", new Vector2(4f, 36f));
+        ResizeBar(track, "TrackLine", new Vector2(0f, 3f));
+        ResizeBar(track, "BeatMid", new Vector2(3f, 22f));
+
+        var playheadRt = track.Find("Playhead") as RectTransform;
+        if (playheadRt != null)
+        {
+            playheadRt.sizeDelta = playheadSize;
+            var playheadImg = playheadRt.GetComponent<Image>();
+            if (playheadImg != null)
+                playheadImg.color = new Color(0.35f, 0.88f, 1f, 1f);
+        }
+
+        _lastGuideType = CommandType.None;
+    }
+
+    static void StretchRect(RectTransform rt, float left, float bottom, float right, float top)
+    {
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(left, bottom);
+        rt.offsetMax = new Vector2(right, top);
+    }
+
+    static void ResizeBar(Transform parent, string name, Vector2 sizeDelta)
+    {
+        var rt = parent.Find(name) as RectTransform;
+        if (rt == null)
+            return;
+
+        rt.sizeDelta = sizeDelta;
+    }
+
+    void EnsureDrawOrder()
+    {
+        if (guidesRoot == null || playhead == null || markersRoot == null)
+            return;
+
+        guidesRoot.SetSiblingIndex(playhead.GetSiblingIndex());
+        playhead.SetSiblingIndex(guidesRoot.GetSiblingIndex() + 1);
         markersRoot.SetSiblingIndex(playhead.GetSiblingIndex() + 1);
     }
 
@@ -117,6 +202,122 @@ public class RhythmTimelineUI : MonoBehaviour
 
         _subscribed = false;
     }
+
+    void TrySubscribeSelector()
+    {
+        var selector = RhythmPatternSelector.Instance ?? FindAnyObjectByType<RhythmPatternSelector>();
+        if (selector == null)
+            return;
+
+        selector.OnSelectionChanged -= OnPatternSelectionChanged;
+        selector.OnSelectionChanged += OnPatternSelectionChanged;
+        _selectorSubscribed = true;
+        RefreshPatternGuides();
+    }
+
+    void TryUnsubscribeSelector()
+    {
+        var selector = RhythmPatternSelector.Instance ?? FindAnyObjectByType<RhythmPatternSelector>();
+        if (selector != null)
+            selector.OnSelectionChanged -= OnPatternSelectionChanged;
+
+        _selectorSubscribed = false;
+    }
+
+    void OnPatternSelectionChanged(CommandType type) => RefreshPatternGuides();
+
+    void RefreshPatternGuides()
+    {
+        ResolveReferences();
+        EnsureGuidesRoot();
+
+        var type = RhythmPatternSelector.Instance != null
+            ? RhythmPatternSelector.Instance.Selected
+            : CommandType.GoldPulse;
+
+        if (type == CommandType.None)
+            type = CommandType.GoldPulse;
+
+        if (_lastGuideType == type && _guideLines.Count > 0)
+            return;
+
+        _lastGuideType = type;
+        ClearGuides();
+
+        if (guidesRoot == null || !RhythmPatternLibrary.TryGetByType(type, out var pattern))
+            return;
+
+        var color = GetGuideColor(type);
+        color.a = guideAlpha;
+
+        foreach (float fraction in pattern.HitFractions)
+            CreateGuideLine(fraction, color, fraction <= 0.001f);
+
+        EnsureDrawOrder();
+    }
+
+    void EnsureGuidesRoot()
+    {
+        if (guidesRoot != null)
+            return;
+
+        var track = transform.Find("TrackArea") as RectTransform;
+        if (track == null)
+            return;
+
+        var go = new GameObject("Guides", typeof(RectTransform));
+        go.transform.SetParent(track, false);
+        guidesRoot = go.GetComponent<RectTransform>();
+        guidesRoot.anchorMin = Vector2.zero;
+        guidesRoot.anchorMax = Vector2.one;
+        guidesRoot.offsetMin = Vector2.zero;
+        guidesRoot.offsetMax = Vector2.zero;
+    }
+
+    void CreateGuideLine(float fractionInMeasure, Color color, bool emphasize)
+    {
+        var go = new GameObject($"Guide_{fractionInMeasure:0.###}", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(guidesRoot, false);
+
+        var img = go.GetComponent<Image>();
+        img.sprite = GetMarkerSprite();
+        img.color = color;
+        img.raycastTarget = false;
+
+        var size = emphasize
+            ? new Vector2(guideSize.x + 1f, guideSize.y + 2f)
+            : guideSize;
+        var rt = go.GetComponent<RectTransform>();
+        SetAnchorPosition(rt, fractionInMeasure, size);
+        _guideLines.Add(img);
+    }
+
+    void ClearGuides()
+    {
+        for (int i = _guideLines.Count - 1; i >= 0; i--)
+        {
+            if (_guideLines[i] != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(_guideLines[i].gameObject);
+                else
+                    DestroyImmediate(_guideLines[i].gameObject);
+            }
+        }
+
+        _guideLines.Clear();
+    }
+
+    static Color GetGuideColor(CommandType type) => type switch
+    {
+        CommandType.GoldPulse => new Color(1f, 0.84f, 0.31f, 1f),
+        CommandType.RhythmShot => new Color(0.92f, 0.92f, 0.92f, 1f),
+        CommandType.OverloadStrike => new Color(0.94f, 0.33f, 0.31f, 1f),
+        CommandType.ChainZap => new Color(0.81f, 0.58f, 0.85f, 1f),
+        CommandType.TempoUp => new Color(0.35f, 0.85f, 1f, 1f),
+        CommandType.TempoDown => new Color(0.62f, 0.55f, 0.95f, 1f),
+        _ => new Color(0.75f, 0.75f, 0.75f, 1f)
+    };
 
     void OnTapVisualized(float adjustedSecondsInMeasure)
     {
@@ -179,21 +380,16 @@ public class RhythmTimelineUI : MonoBehaviour
         }
     }
 
-    float GetInputOffset()
-    {
-        if (RhythmInputSettings.Instance != null)
-            return RhythmInputSettings.Instance.InputOffsetSeconds;
-
-        return RhythmInputSettings.DefaultInputOffsetSeconds;
-    }
-
     float GetFeltRelativeNow()
     {
-        float offset = GetInputOffset();
-        return (Time.time - offset) - BeatClock.Instance.MeasureStartTime;
+        if (BeatClock.Instance == null)
+            return 0f;
+
+        return RhythmInputSettings.GetFeltElapsedInMeasure(
+            Time.time,
+            BeatClock.Instance.MeasureStartTime);
     }
 
-    /// <summary>felt rel 선형 매핑 — inner |---| = 0..duration, 가속/압축 없음.</summary>
     float FeltRelToAnchor(float feltRel, float duration)
     {
         float earlyLateRef = markerEarlyLateReference * (duration / BeatClock.ReferenceMeasureDuration);
@@ -212,7 +408,7 @@ public class RhythmTimelineUI : MonoBehaviour
         if (markersRoot == null)
             return;
 
-        var baseColor = new Color(1f, 0.72f, 0.3f, 0.95f);
+        var baseColor = new Color(1f, 0.82f, 0.35f, 1f);
         _markerSequence++;
 
         var go = new GameObject($"TapMark_{_markerSequence}", typeof(RectTransform), typeof(Image));

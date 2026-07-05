@@ -7,7 +7,6 @@ public static class GameSettings
 {
     public const string SfxVolumeKey = "BeatDefender.SfxVolume";
     public const string MetronomeVolumeKey = "BeatDefender.MetronomeVolume";
-    public const string MapLayoutKey = "BeatDefender.MapLayout";
 
     public static float SfxVolume
     {
@@ -29,13 +28,7 @@ public static class GameSettings
         }
     }
 
-    public static MapLayoutKind SelectedMapLayout
-    {
-        get => (MapLayoutKind)PlayerPrefs.GetInt(MapLayoutKey, (int)MapLayoutKind.Classic);
-        set => PlayerPrefs.SetInt(MapLayoutKey, (int)value);
-    }
-
-    public static string ActiveGameSceneName => SceneNames.GetGameScene(SelectedMapLayout);
+    public static string ActiveGameSceneName => SceneNames.Game;
 
     public static event System.Action<float> OnSfxVolumeChanged;
     public static event System.Action<float> OnMetronomeVolumeChanged;

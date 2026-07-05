@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 510deceeac787b943bd6b6a3b5c51a81
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - eighthNote: {fileID: 280490415929433642, guid: 803337a51333d844397209b175bc72b4, type: 3}
+  - downbeat: {fileID: 6992570619773469441, guid: e159c024646c51d4c87f22d4bebcee4e, type: 3}
+  - elite: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

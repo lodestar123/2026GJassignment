@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Space 등 리듬 키 입력 시각 기록. BeatTower Fallback(1.2s) 및 패턴 idle 리셋에 사용.
+/// Space 등 리듬 키 입력 시각 기록 · 패턴 진행(tap count) 표시용.
 /// </summary>
 public class RhythmInputRecorder : MonoBehaviour
 {

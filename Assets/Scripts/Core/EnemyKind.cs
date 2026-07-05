@@ -1,5 +1,6 @@
 public enum EnemyKind
 {
     EighthNote,
-    Downbeat
+    Downbeat,
+    Elite
 }
