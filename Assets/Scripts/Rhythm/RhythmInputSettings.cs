@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 입력 felt 보정. Baseline(0.24s) + 플레이어 조정(0 = baseline).
-/// 설정 UI "감도 0" → 적용 offset 0.24s. OnBeat 연출은 baseline만 (BeatClock).
+/// 입력 타이밍 보정. Baseline(0.24s) + 플레이어 조정(0 = baseline).
+/// offset은 <b>판정·입력 보정</b>에만 쓰입니다. 타임라인·playhead는 BeatClock wall 마디 축을 따릅니다.
 /// </summary>
 public class RhythmInputSettings : MonoBehaviour
 {
@@ -43,7 +43,7 @@ public class RhythmInputSettings : MonoBehaviour
     /// <summary>플레이어 감도 조정(0 = baseline).</summary>
     public float InputOffsetAdjustment => inputOffsetAdjustment;
 
-    /// <summary>실제 적용 offset = Baseline + Adjustment (판정·타임라인).</summary>
+    /// <summary>실제 적용 offset = Baseline + Adjustment (판정 전용).</summary>
     public float InputOffsetSeconds => BaselineInputOffsetSeconds + inputOffsetAdjustment;
 
     void Awake()
@@ -82,16 +82,22 @@ public class RhythmInputSettings : MonoBehaviour
         return Instance != null ? Instance.InputOffsetSeconds : DefaultInputOffsetSeconds;
     }
 
-    /// <summary>판정·타임라인 felt 마디 원점 — wall MeasureStart + offset (= 사이클 지연).</summary>
-    public static float GetRhythmMeasureOrigin(float measureStartTime)
+    /// <summary>마디 wall 경과(초) — 타임라인·playhead 축. [0, duration)</summary>
+    public static float GetWallElapsedInMeasure(float wallTime, float measureStartTime)
     {
-        return measureStartTime + GetAppliedOffsetSeconds();
+        return wallTime - measureStartTime;
     }
 
-    /// <summary>판정·타임라인 felt 마디 내 경과.</summary>
+    /// <summary>판정용 경과 = wall − offset (osu!/DJMAX식 global offset).</summary>
+    public static float GetJudgedElapsedInMeasure(float wallTime, float measureStartTime)
+    {
+        return GetWallElapsedInMeasure(wallTime, measureStartTime) - GetAppliedOffsetSeconds();
+    }
+
+    /// <summary>판정용 경과. <see cref="GetJudgedElapsedInMeasure"/> 와 동일.</summary>
     public static float GetFeltElapsedInMeasure(float wallTime, float measureStartTime)
     {
-        return wallTime - GetRhythmMeasureOrigin(measureStartTime);
+        return GetJudgedElapsedInMeasure(wallTime, measureStartTime);
     }
 
     /// <summary>설정 UI — 감도 0이면 baseline(0.24s).</summary>

@@ -17,8 +17,13 @@ public class SceneBgmPlayer : MonoBehaviour
     [SerializeField] bool duckOnPause = true;
     [SerializeField] [Range(0f, 1f)] float pauseVolumeMultiplier = 0.4f;
 
+    [Header("Tempo")]
+    [Tooltip("TempoUp/Down 시 BeatClock·메트로놈과 같이 pitch 연동")]
+    [SerializeField] bool syncPitchToTempo = true;
+
     AudioSource _source;
     bool _pauseSubscribed;
+    bool _tempoSubscribed;
 
     public float BgmStartTimeUnscaled { get; private set; }
     public bool IsPlaying => _source != null && _source.isPlaying;
@@ -40,8 +45,15 @@ public class SceneBgmPlayer : MonoBehaviour
     void Start()
     {
         TrySubscribePause();
+        TrySubscribeTempo();
         if (playOnAwake && !ShouldDeferPlayForMatchCountdown())
             Play();
+    }
+
+    void Update()
+    {
+        if (syncPitchToTempo && !_tempoSubscribed)
+            TrySubscribeTempo();
     }
 
     static bool ShouldDeferPlayForMatchCountdown()
@@ -54,6 +66,7 @@ public class SceneBgmPlayer : MonoBehaviour
     void OnDestroy()
     {
         UnsubscribePause();
+        UnsubscribeTempo();
     }
 
     void OnValidate()
@@ -66,6 +79,7 @@ public class SceneBgmPlayer : MonoBehaviour
             _source.loop = loop;
             ApplyClip();
             ApplyVolume();
+            ApplyTempoPitch();
         }
     }
 
@@ -76,6 +90,7 @@ public class SceneBgmPlayer : MonoBehaviour
 
         ApplyClip();
         ApplyVolume();
+        ApplyTempoPitch();
 
         if (!_source.isPlaying)
         {
@@ -129,5 +144,33 @@ public class SceneBgmPlayer : MonoBehaviour
     void HandlePauseChanged(bool _)
     {
         ApplyVolume();
+    }
+
+    void TrySubscribeTempo()
+    {
+        if (!syncPitchToTempo || _tempoSubscribed || TempoController.Instance == null)
+            return;
+
+        TempoController.Instance.OnTempoChanged += ApplyTempoPitch;
+        _tempoSubscribed = true;
+        ApplyTempoPitch();
+    }
+
+    void UnsubscribeTempo()
+    {
+        if (!_tempoSubscribed || TempoController.Instance == null)
+            return;
+
+        TempoController.Instance.OnTempoChanged -= ApplyTempoPitch;
+        _tempoSubscribed = false;
+    }
+
+    void ApplyTempoPitch()
+    {
+        if (_source == null || !syncPitchToTempo)
+            return;
+
+        float scale = TempoController.Instance != null ? TempoController.Instance.CurrentScale : 1f;
+        _source.pitch = scale > 0f ? 1f / scale : 1f;
     }
 }

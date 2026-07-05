@@ -18076,7 +18076,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c71fe27c41cc84bb4a39c45c8283ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::RhythmInputSettings
-  inputOffsetAdjustment: -0.04
+  inputOffsetAdjustment: -0.2
   loadFromPlayerPrefsOnAwake: 1
   additionalReservedKeys: 
 --- !u!114 &1785167799
@@ -18127,7 +18127,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57c9b8524ac0fea4091e83d74b85bba7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::BeatClock
-  measureDurationSeconds: 1
+  measureDurationSeconds: 0.995
   rhythmTestInvincible: 0
   createInvincibleToggleUi: 1
   invincibleToggleKey: 289
@@ -18164,6 +18164,7 @@ MonoBehaviour:
   playOnAwake: 1
   duckOnPause: 1
   pauseVolumeMultiplier: 0.4
+  syncPitchToTempo: 1
 --- !u!1 &1787079076
 GameObject:
   m_ObjectHideFlags: 0

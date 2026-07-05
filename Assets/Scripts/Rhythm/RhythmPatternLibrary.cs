@@ -126,16 +126,34 @@ public static class RhythmPatternLibrary
         return true;
     }
 
-    /// <summary>타임라인 마커 표시용 felt — Perfect + visual snap 창 이내면 가이드 위치.</summary>
+    /// <summary>타임라인 마커 표시용 판정 축 — Perfect + snap 창 이내면 가이드 슬롯.</summary>
+    public static float GetMarkerDisplayChartElapsed(
+        float judgedSecondsInMeasure,
+        in TapNearestGuideEvaluation evaluation,
+        float timeScale)
+    {
+        if (!evaluation.IsValid || !ShouldSnapMarkerToGuide(in evaluation, timeScale))
+            return judgedSecondsInMeasure;
+
+        return evaluation.GuideSecondsInMeasure;
+    }
+
+    /// <summary><see cref="GetMarkerDisplayChartElapsed"/> — 하위 호환.</summary>
+    public static float GetMarkerDisplayWallElapsed(
+        float wallSecondsInMeasure,
+        in TapNearestGuideEvaluation evaluation,
+        float timeScale)
+    {
+        return GetMarkerDisplayChartElapsed(wallSecondsInMeasure, in evaluation, timeScale);
+    }
+
+    /// <summary><see cref="GetMarkerDisplayChartElapsed"/> — 하위 호환.</summary>
     public static float GetMarkerDisplayFelt(
         float feltSecondsInMeasure,
         in TapNearestGuideEvaluation evaluation,
         float timeScale)
     {
-        if (!evaluation.IsValid || !ShouldSnapMarkerToGuide(in evaluation, timeScale))
-            return feltSecondsInMeasure;
-
-        return evaluation.GuideSecondsInMeasure;
+        return GetMarkerDisplayChartElapsed(feltSecondsInMeasure, in evaluation, timeScale);
     }
 
     public static bool ShouldSnapMarkerToGuide(in TapNearestGuideEvaluation evaluation, float timeScale)

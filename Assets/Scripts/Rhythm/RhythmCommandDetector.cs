@@ -12,7 +12,7 @@ public class RhythmCommandDetector : MonoBehaviour
     public static RhythmCommandDetector Instance { get; private set; }
 
     public event Action<CommandType, JudgmentResult> OnCommandResolved;
-    /// <summary>offset felt 마디 내 초 + 즉시 타이밍 품질.</summary>
+    /// <summary>판정 축 마디 내 초(차트) + 즉시 타이밍 품질.</summary>
     public event Action<float, TapTimingQuality> OnTapTimingFeedback;
 
     public int CurrentTapCount => _seqOpen ? _seqTaps.Count : 0;
@@ -139,18 +139,18 @@ public class RhythmCommandDetector : MonoBehaviour
         if (BeatClock.Instance == null || !TryGetSelectedPattern(out var pattern))
             return;
 
-        float felt = RhythmInputSettings.GetFeltElapsedInMeasure(
-            rawTime,
-            BeatClock.Instance.MeasureStartTime);
+        float measureStart = BeatClock.Instance.MeasureStartTime;
+        float judgedElapsed = RhythmInputSettings.GetJudgedElapsedInMeasure(rawTime, measureStart);
         float duration = BeatClock.Instance.EffectiveMeasureDuration;
         float scale = BeatClock.Instance.PatternTimeScale;
 
         if (!RhythmPatternLibrary.TryEvaluateTapNearestGuide(
-                felt, pattern, duration, scale, out var evaluation))
+                judgedElapsed, pattern, duration, scale, out var evaluation))
             return;
 
-        float displayFelt = RhythmPatternLibrary.GetMarkerDisplayFelt(felt, in evaluation, scale);
-        OnTapTimingFeedback?.Invoke(displayFelt, evaluation.Quality);
+        float displayChart = RhythmPatternLibrary.GetMarkerDisplayChartElapsed(
+            judgedElapsed, in evaluation, scale);
+        OnTapTimingFeedback?.Invoke(displayChart, evaluation.Quality);
     }
 
     void RegisterTap(float rawTime)

@@ -6,8 +6,8 @@ using TMPro;
 
 /// <summary>
 /// 2/4 (2박 = 한 사이클).
-/// 마디 경계 = wall-clock · OnBeat = baseline felt(0.24s) — Core·적·메트로놈과 타임라인 adj=0 정렬.
-/// 판정·playhead = baseline + 감도 조정 (RhythmInputSettings).
+/// 마디 경계 = wall-clock · OnBeat = baseline felt(0.24s) — Core·메트로놈.
+/// 타임라인 가이드 = 패턴 슬롯 고정 · playhead = 판정 축(wall−offset) · OnBeat = baseline felt.
 /// </summary>
 [DefaultExecutionOrder(-50)]
 public class BeatClock : MonoBehaviour

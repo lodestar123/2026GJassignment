@@ -72,5 +72,17 @@ namespace BeatDefender.Tests
                 RhythmInputSettings.ClampAdjustment(1f),
                 0.0001f);
         }
+
+        [Test]
+        public void JudgedElapsed_SubtractsOffsetFromWall()
+        {
+            var settings = _go.AddComponent<RhythmInputSettings>();
+            settings.SetInputOffsetAdjustment(0.05f, persist: false);
+
+            float measureStart = 10f;
+            float wallTime = 10.7f;
+            Assert.AreEqual(0.7f, RhythmInputSettings.GetWallElapsedInMeasure(wallTime, measureStart), 0.0001f);
+            Assert.AreEqual(0.45f, RhythmInputSettings.GetJudgedElapsedInMeasure(wallTime, measureStart), 0.0001f);
+        }
     }
 }

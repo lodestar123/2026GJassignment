@@ -3,9 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 리듬 타임라인 — bar = felt 마디(0~duration).
-/// 사이클은 MeasureStart + offset 에서 시작(지연). 가이드·playhead·탭 마커 모두 felt 축.
-/// OnBeat(Core 등)는 BeatClock baseline felt 별도.
+/// 리듬 타임라인 — 가이드는 패턴 슬롯(0~1) 고정. playhead·탭 마커 = 판정 축(judged).
+/// input offset은 판정·playhead에만 반영(가이드는 움직이지 않음).
 /// </summary>
 [DefaultExecutionOrder(200)]
 public class RhythmTimelineUI : MonoBehaviour
@@ -353,7 +352,7 @@ public class RhythmTimelineUI : MonoBehaviour
         _ => new Color(0.75f, 0.75f, 0.75f, 1f)
     };
 
-    void OnTapTimingFeedback(float feltSecondsInMeasure, TapTimingQuality quality)
+    void OnTapTimingFeedback(float chartSecondsInMeasure, TapTimingQuality quality)
     {
         if (BeatClock.Instance == null || markersRoot == null)
             return;
@@ -368,7 +367,7 @@ public class RhythmTimelineUI : MonoBehaviour
         if (quality == TapTimingQuality.Perfect)
             _playheadFlashUntil = Time.time + 0.1f;
 
-        AddMarker(FeltRelToAnchor(feltSecondsInMeasure, duration), quality);
+        AddMarker(ChartElapsedToAnchor(chartSecondsInMeasure, duration), quality);
     }
 
     void UpdatePlayheadFlash()
@@ -395,8 +394,8 @@ public class RhythmTimelineUI : MonoBehaviour
         if (duration <= 0f)
             return;
 
-        float feltNow = GetFeltRelativeNow();
-        SetAnchorPosition(playhead, FeltRelToAnchor(feltNow, duration), playheadSize);
+        float judgedNow = GetJudgedElapsedNow();
+        SetAnchorPosition(playhead, ChartElapsedToAnchor(judgedNow, duration), playheadSize);
     }
 
     void UpdateMarkerFade()
@@ -448,27 +447,27 @@ public class RhythmTimelineUI : MonoBehaviour
         }
     }
 
-    float GetFeltRelativeNow()
+    float GetJudgedElapsedNow()
     {
         if (BeatClock.Instance == null)
             return 0f;
 
-        return RhythmInputSettings.GetFeltElapsedInMeasure(
+        return RhythmInputSettings.GetJudgedElapsedInMeasure(
             Time.time,
             BeatClock.Instance.MeasureStartTime);
     }
 
-    float FeltRelToAnchor(float feltRel, float duration)
+    float ChartElapsedToAnchor(float chartElapsed, float duration)
     {
         float earlyLateRef = markerEarlyLateReference * (duration / BeatClock.ReferenceMeasureDuration);
 
-        if (feltRel < 0f)
-            return -markerSideExtend * Mathf.Clamp01(-feltRel / earlyLateRef);
+        if (chartElapsed < 0f)
+            return -markerSideExtend * Mathf.Clamp01(-chartElapsed / earlyLateRef);
 
-        if (feltRel > duration)
-            return 1f + markerSideExtend * Mathf.Clamp01((feltRel - duration) / earlyLateRef);
+        if (chartElapsed > duration)
+            return 1f + markerSideExtend * Mathf.Clamp01((chartElapsed - duration) / earlyLateRef);
 
-        return feltRel / duration;
+        return chartElapsed / duration;
     }
 
     float GetPulsePeakScale(TapTimingQuality quality) => quality switch
