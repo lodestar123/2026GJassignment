@@ -1,48 +1,35 @@
 using System;
 
-
-
-/// <summary>선택 중인 타워 종류 — TowerPlacer가 소비. 같은 버튼 재클릭 시 선택 해제.</summary>
-
+/// <summary>타워 배치 모드 — 통합 타워 1종.</summary>
 public static class TowerSelection
-
 {
+    public static bool IsArmed { get; private set; }
 
-    public static bool HasSelection { get; private set; }
-
-    public static TowerType Selected { get; private set; }
-
-
+    public static bool HasSelection => IsArmed;
 
     public static event Action OnChanged;
 
-
-
-    public static void Select(TowerType type)
-
+    public static void ToggleArm()
     {
-
-        if (HasSelection && Selected == type)
-
-        {
-
-            HasSelection = false;
-
-            OnChanged?.Invoke();
-
-            return;
-
-        }
-
-
-
-        HasSelection = true;
-
-        Selected = type;
-
+        IsArmed = !IsArmed;
         OnChanged?.Invoke();
-
     }
 
-}
+    public static void Arm()
+    {
+        if (IsArmed)
+            return;
 
+        IsArmed = true;
+        OnChanged?.Invoke();
+    }
+
+    public static void Disarm()
+    {
+        if (!IsArmed)
+            return;
+
+        IsArmed = false;
+        OnChanged?.Invoke();
+    }
+}

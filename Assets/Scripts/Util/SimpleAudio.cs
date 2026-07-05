@@ -127,13 +127,7 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayTowerFire(TowerType type)
     {
-        float hz = type switch
-        {
-            TowerType.Strike => 520f,
-            TowerType.Boost => 640f,
-            _ => 760f
-        };
-        PlayBeep(hz, 0.035f, sfxVolume * 0.25f, 1.1f);
+        PlayBeep(760f, 0.035f, sfxVolume * 0.25f, 1.1f);
     }
 
     public void PlayEnemyHit(float damage)

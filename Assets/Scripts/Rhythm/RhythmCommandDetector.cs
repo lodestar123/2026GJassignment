@@ -304,8 +304,8 @@ public class RhythmCommandDetector : MonoBehaviour
 
     bool HasRequiredTower(CommandType type) => type switch
     {
-        CommandType.OverloadStrike => _towers != null && _towers.StrikeTowers.Count > 0,
-        CommandType.ChainZap => _towers != null && _towers.BoostTowers.Count > 0,
+        CommandType.OverloadStrike or CommandType.ChainZap =>
+            _towers != null && _towers.HasAnyTower,
         _ => true
     };
 

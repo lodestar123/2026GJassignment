@@ -568,12 +568,7 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    static Color GetShotColor(TowerType type) => type switch
-    {
-        TowerType.Strike => new Color(1f, 0.45f, 0.35f),
-        TowerType.Boost => new Color(1f, 0.75f, 0.2f),
-        _ => new Color(0.95f, 0.95f, 1f)
-    };
+    static Color GetShotColor(TowerType type) => new Color(0.95f, 0.95f, 1f);
 
     static Color GetDamageColor(float damage) =>
         damage >= 8f ? new Color(1f, 0.45f, 0.25f)

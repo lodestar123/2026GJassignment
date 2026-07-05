@@ -4,14 +4,13 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 타워 종류 선택 HUD — Beat 20G / Strike 30G / Boost 25G. 같은 버튼 재클릭 시 선택 해제.
+/// 통합 타워 배치 HUD — Tower 20G · 재클릭 시 배치 모드 해제.
 /// </summary>
 public class TowerTypeSelectUI : MonoBehaviour
 {
     [Serializable]
     public struct TowerButton
     {
-        public TowerType Type;
         public Image Background;
         public TextMeshProUGUI Label;
     }
@@ -68,10 +67,8 @@ public class TowerTypeSelectUI : MonoBehaviour
             if (legacyButton != null)
                 Destroy(legacyButton);
 
-            var control = go.GetComponent<TowerTypeButton>();
-            if (control == null)
-                control = go.AddComponent<TowerTypeButton>();
-            control.Type = entry.Type;
+            if (go.GetComponent<TowerTypeButton>() == null)
+                go.AddComponent<TowerTypeButton>();
         }
     }
 
@@ -79,51 +76,42 @@ public class TowerTypeSelectUI : MonoBehaviour
 
     void Refresh()
     {
-        if (towerButtons == null)
+        if (towerButtons == null || towerButtons.Length == 0)
             return;
 
         int gold = _resources != null ? _resources.Gold : 0;
-        bool hasSelection = TowerSelection.HasSelection;
+        int cost = TowerPlacer.TowerCost;
+        bool armed = TowerSelection.IsArmed;
+        bool canAfford = gold >= cost;
+        bool interactable = canAfford || armed;
 
-        foreach (var entry in towerButtons)
+        for (int i = 0; i < towerButtons.Length; i++)
         {
+            var entry = towerButtons[i];
             if (entry.Background == null)
                 continue;
 
+            bool isPrimary = i == 0;
+            entry.Background.gameObject.SetActive(isPrimary);
+            if (!isPrimary)
+                continue;
+
             var control = entry.Background.GetComponent<TowerTypeButton>();
-            int cost = GetCost(entry.Type);
-            bool canAfford = gold >= cost;
-            bool isSelected = hasSelection && entry.Type == TowerSelection.Selected;
-            bool interactable = canAfford || isSelected;
-
             if (entry.Label != null)
-                entry.Label.text = $"{GetShortName(entry.Type)}\n{cost}G";
+            {
+                entry.Label.text = armed
+                    ? $"Tower\n{cost}G  ON"
+                    : $"Tower\n{cost}G";
+            }
 
-            entry.Background.color = isSelected ? selectedColor
+            entry.Background.color = armed ? selectedColor
                 : canAfford ? normalColor : disabledColor;
 
             if (control != null)
             {
-                control.Type = entry.Type;
                 control.Interactable = interactable;
                 control.SetRaycast(interactable);
             }
         }
     }
-
-    static int GetCost(TowerType type) => type switch
-    {
-        TowerType.Beat => 20,
-        TowerType.Strike => 30,
-        TowerType.Boost => 25,
-        _ => 0
-    };
-
-    static string GetShortName(TowerType type) => type switch
-    {
-        TowerType.Beat => "Beat",
-        TowerType.Strike => "Strike",
-        TowerType.Boost => "Boost",
-        _ => type.ToString()
-    };
 }

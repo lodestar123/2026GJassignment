@@ -2,11 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 타워 설치/교체/판매/강화 · 50% 환급 · BALANCE §2.
+/// 통합 타워 설치/교체/판매/강화 · 50% 환급 · BALANCE §2.
 /// </summary>
 public class TowerPlacer : MonoBehaviour
 {
     public static TowerPlacer Instance { get; private set; }
+
+    public const int TowerCost = 20;
 
     [SerializeField] Transform towerRoot;
 
@@ -47,18 +49,9 @@ public class TowerPlacer : MonoBehaviour
             Instance = null;
     }
 
-    public int GetSelectedCost()
-    {
-        return TowerSelection.HasSelection ? GetCost(TowerSelection.Selected) : 0;
-    }
+    public int GetSelectedCost() => TowerSelection.IsArmed ? TowerCost : 0;
 
-    public static int GetCost(TowerType type) => type switch
-    {
-        TowerType.Beat => 20,
-        TowerType.Strike => 30,
-        TowerType.Boost => 25,
-        _ => 0
-    };
+    public static int GetCost(TowerType type = TowerType.Beat) => TowerCost;
 
     public void HandleCellClicked(TowerPlacementCell cell)
     {
@@ -71,28 +64,19 @@ public class TowerPlacer : MonoBehaviour
             return;
         }
 
-        if (!TowerSelection.HasSelection)
+        if (!TowerSelection.IsArmed)
             return;
-
-        var selected = TowerSelection.Selected;
-        int cost = GetCost(selected);
 
         if (cell.Occupant != null)
-        {
-            if (cell.Occupant.towerType == selected)
-                return;
+            return;
 
-            RefundSell(cell.Occupant);
-            RemoveTower(cell.Occupant, cell);
-        }
-
-        if (_resources == null || !_resources.TrySpendGold(cost))
+        if (_resources == null || !_resources.TrySpendGold(TowerCost))
         {
-            Debug.Log($"[TowerPlacer] 골드 부족 ({cost}G 필요)");
+            Debug.Log($"[TowerPlacer] 골드 부족 ({TowerCost}G 필요)");
             return;
         }
 
-        PlaceTower(cell, selected, cost);
+        PlaceTower(cell, TowerCost);
     }
 
     public bool TryUnlockSlot(TowerPlacementCell cell)
@@ -119,9 +103,9 @@ public class TowerPlacer : MonoBehaviour
         return true;
     }
 
-    public bool TryUpgradeBeatTower(Tower tower)
+    public bool TryUpgradeTower(Tower tower)
     {
-        if (tower == null || tower.towerType != TowerType.Beat)
+        if (tower == null)
             return false;
 
         var beat = tower.GetComponent<BeatTower>();
@@ -142,10 +126,12 @@ public class TowerPlacer : MonoBehaviour
         }
 
         CombatVfxService.Instance?.PlayGoldSpendPopup(tower.transform.position, cost);
-        Debug.Log($"[TowerPlacer] BeatTower Lv{beat.Level} (-{cost}G)");
+        Debug.Log($"[TowerPlacer] Tower Lv{beat.Level} (-{cost}G)");
         TowerSellUI.Instance?.RefreshSelected();
         return true;
     }
+
+    public bool TryUpgradeBeatTower(Tower tower) => TryUpgradeTower(tower);
 
     public void SellTower(Tower tower)
     {
@@ -158,29 +144,27 @@ public class TowerPlacer : MonoBehaviour
         TowerSellUI.Instance?.Hide();
     }
 
-    void PlaceTower(TowerPlacementCell cell, TowerType type, int spentGold)
+    void PlaceTower(TowerPlacementCell cell, int spentGold)
     {
-        var go = new GameObject($"{type}Tower");
+        var go = new GameObject("Tower");
         go.transform.SetParent(towerRoot != null ? towerRoot : transform);
         go.transform.position = cell.transform.position;
 
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = GreyboxSprites.Tower;
-        sr.color = GetTowerColor(type);
+        sr.color = Color.white;
         sr.sortingOrder = 10;
         go.transform.localScale = Vector3.one * 0.6f;
 
         var tower = go.AddComponent<Tower>();
-        tower.towerType = type;
+        tower.towerType = TowerType.Beat;
+        go.AddComponent<BeatTower>();
 
         var rangeCol = go.GetComponent<CircleCollider2D>();
         if (rangeCol == null)
             rangeCol = go.AddComponent<CircleCollider2D>();
         rangeCol.isTrigger = false;
         rangeCol.radius = Tower.HoverRadiusAtBaseScale;
-
-        if (type == TowerType.Beat)
-            go.AddComponent<BeatTower>();
 
         go.AddComponent<TowerClickTarget>();
         go.AddComponent<TowerFireRecoil>();
@@ -190,8 +174,8 @@ public class TowerPlacer : MonoBehaviour
         _registry?.RegisterTower(tower);
 
         CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, spentGold);
-        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position, type);
-        Debug.Log($"[TowerPlacer] {type} 설치 ({spentGold}G)");
+        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position, TowerType.Beat);
+        Debug.Log($"[TowerPlacer] Tower 설치 ({spentGold}G)");
     }
 
     void RemoveTower(Tower tower, TowerPlacementCell cell)
@@ -214,13 +198,10 @@ public class TowerPlacer : MonoBehaviour
         if (_resources == null || tower == null)
             return;
 
-        int invested = GetCost(tower.towerType);
-        if (tower.towerType == TowerType.Beat)
-        {
-            var beat = tower.GetComponent<BeatTower>();
-            if (beat != null)
-                invested = beat.GetTotalInvestedGold();
-        }
+        int invested = TowerCost;
+        var beat = tower.GetComponent<BeatTower>();
+        if (beat != null)
+            invested = beat.GetTotalInvestedGold();
 
         int refund = invested / 2;
         _resources.AddGold(refund);
@@ -240,14 +221,6 @@ public class TowerPlacer : MonoBehaviour
 
         return null;
     }
-
-    static Color GetTowerColor(TowerType type) => type switch
-    {
-        TowerType.Beat => Color.white,
-        TowerType.Strike => new Color(0.94f, 0.33f, 0.31f),
-        TowerType.Boost => new Color(1f, 0.6f, 0f),
-        _ => Color.gray
-    };
 }
 
 /// <summary>

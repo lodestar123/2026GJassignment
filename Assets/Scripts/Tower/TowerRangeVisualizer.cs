@@ -50,14 +50,6 @@ public class TowerRangeVisualizer : MonoBehaviour
 
         float diameter = _tower.Range * 2f;
         _ring.transform.localScale = new Vector3(diameter, diameter, 1f);
-        _ring.color = GetRingColor(_tower.towerType, alpha);
+        _ring.color = new Color(1f, 1f, 1f, alpha);
     }
-
-    static Color GetRingColor(TowerType type, float a) => type switch
-    {
-        TowerType.Beat => new Color(1f, 1f, 1f, a),
-        TowerType.Strike => new Color(0.94f, 0.33f, 0.31f, a),
-        TowerType.Boost => new Color(1f, 0.6f, 0f, a),
-        _ => new Color(0.8f, 0.8f, 0.8f, a)
-    };
 }

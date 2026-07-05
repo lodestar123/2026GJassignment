@@ -104,13 +104,7 @@ public class Tower : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = towerType switch
-        {
-            TowerType.Beat => Color.white,
-            TowerType.Strike => Color.red,
-            TowerType.Boost => new Color(1f, 0.6f, 0f),
-            _ => Color.gray
-        };
+        Gizmos.color = Color.white;
         Gizmos.DrawWireSphere(transform.position, range);
     }
 }

@@ -3,12 +3,11 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// 타워 종류 선택 — 마우스 좌클릭만. UI Button Submit/키보드 네비게이션과 리듬 입력 충돌 방지.
+/// 통합 타워 배치 모드 토글 — 마우스 좌클릭만.
 /// </summary>
 [RequireComponent(typeof(Image))]
 public class TowerTypeButton : MonoBehaviour, IPointerClickHandler
 {
-    public TowerType Type { get; set; }
     public bool Interactable { get; set; } = true;
 
     Image _image;
@@ -26,7 +25,7 @@ public class TowerTypeButton : MonoBehaviour, IPointerClickHandler
         if (!Interactable || eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        TowerSelection.Select(Type);
+        TowerSelection.ToggleArm();
     }
 
     public void SetRaycast(bool enabled)

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,12 +6,9 @@ public class TowerRegistry : MonoBehaviour
     public static TowerRegistry Instance { get; private set; }
 
     public IReadOnlyList<BeatTower> BeatTowers => _beatTowers;
-    public IReadOnlyList<Tower> StrikeTowers => _strikeTowers;
-    public IReadOnlyList<Tower> BoostTowers => _boostTowers;
+    public bool HasAnyTower => _beatTowers.Count > 0;
 
     readonly List<BeatTower> _beatTowers = new();
-    readonly List<Tower> _strikeTowers = new();
-    readonly List<Tower> _boostTowers = new();
 
     void Awake()
     {
@@ -35,24 +31,9 @@ public class TowerRegistry : MonoBehaviour
     public void Refresh()
     {
         _beatTowers.Clear();
-        _strikeTowers.Clear();
-        _boostTowers.Clear();
 
         foreach (var beat in FindObjectsByType<BeatTower>(FindObjectsSortMode.None))
             _beatTowers.Add(beat);
-
-        foreach (var tower in FindObjectsByType<Tower>(FindObjectsSortMode.None))
-        {
-            switch (tower.towerType)
-            {
-                case TowerType.Strike:
-                    _strikeTowers.Add(tower);
-                    break;
-                case TowerType.Boost:
-                    _boostTowers.Add(tower);
-                    break;
-            }
-        }
     }
 
     public void RegisterTower(Tower tower)
@@ -60,22 +41,9 @@ public class TowerRegistry : MonoBehaviour
         if (tower == null)
             return;
 
-        switch (tower.towerType)
-        {
-            case TowerType.Beat:
-                var beat = tower.GetComponent<BeatTower>();
-                if (beat != null && !_beatTowers.Contains(beat))
-                    _beatTowers.Add(beat);
-                break;
-            case TowerType.Strike:
-                if (!_strikeTowers.Contains(tower))
-                    _strikeTowers.Add(tower);
-                break;
-            case TowerType.Boost:
-                if (!_boostTowers.Contains(tower))
-                    _boostTowers.Add(tower);
-                break;
-        }
+        var beat = tower.GetComponent<BeatTower>();
+        if (beat != null)
+            Register(beat);
     }
 
     public void UnregisterTower(Tower tower)
@@ -85,10 +53,7 @@ public class TowerRegistry : MonoBehaviour
 
         var beat = tower.GetComponent<BeatTower>();
         if (beat != null)
-            _beatTowers.Remove(beat);
-
-        _strikeTowers.Remove(tower);
-        _boostTowers.Remove(tower);
+            Unregister(beat);
     }
 
     public void Register(BeatTower beatTower)

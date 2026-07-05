@@ -384,12 +384,12 @@ public class TowerSellUI : MonoBehaviour
 
         if (beat != null)
         {
-            return $"Beat Lv{beat.Level}\n" +
+            return $"Tower Lv{beat.Level}\n" +
                    $"DMG {beat.ActiveDamage:0.#} / fb {beat.FallbackDamage:0.#}\n" +
                    $"Sell +{refund}G";
         }
 
-        return $"{tower.towerType}\nSell +{refund}G";
+        return $"Tower\nSell +{refund}G";
     }
 
     void OnUpgradeClicked()
@@ -397,7 +397,7 @@ public class TowerSellUI : MonoBehaviour
         if (_selected == null)
             return;
 
-        TowerPlacer.Instance?.TryUpgradeBeatTower(_selected);
+        TowerPlacer.Instance?.TryUpgradeTower(_selected);
     }
 
     void OnSellClicked()

@@ -430,7 +430,7 @@ public class GameHudUI : MonoBehaviour
 
             detailLine.text =
                 $"Judge P{perfect} G{good} M{miss}{Sep}Towers {towers}{Sep}" +
-                $"Tower: {(TowerSelection.HasSelection ? TowerSelection.Selected.ToString() : "None")}";
+                $"Place: {(TowerSelection.IsArmed ? "ON" : "OFF")}";
         }
     }
 
@@ -457,7 +457,7 @@ public class GameHudUI : MonoBehaviour
         int miss = _stats != null ? _stats.MissCount : 0;
         int towers = TowerPlacer.Instance != null ? TowerPlacer.Instance.TowerCount : 0;
 
-        string towerSel = TowerSelection.HasSelection ? TowerSelection.Selected.ToString() : "None";
+        string towerSel = TowerSelection.IsArmed ? "Place ON" : "Place OFF";
 
         return
             $"{bpmPart}{Sep}Strike {FormatCdRich(strikeCd)}{Sep}Chain {FormatCdRich(chainCd)}{Sep}" +

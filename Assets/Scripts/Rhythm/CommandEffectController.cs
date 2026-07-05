@@ -138,20 +138,24 @@ public class CommandEffectController : MonoBehaviour
 
     void ApplyOverloadStrike(JudgmentResult judgment)
     {
-        if (_towers == null || _towers.StrikeTowers.Count == 0)
+        if (_towers == null || !_towers.HasAnyTower)
         {
-            Debug.Log("[Rhythm] OverloadStrike — StrikeTower 없음 (데미지 없음)");
+            Debug.Log("[Rhythm] OverloadStrike — 타워 없음 (데미지 없음)");
             return;
         }
 
         var hit = new HashSet<EnemyHealth>();
         float ringRadius = Tower.DefaultRange;
-        Vector3 ringCenter = _towers.StrikeTowers[0].transform.position;
-        foreach (var strike in _towers.StrikeTowers)
+        Vector3 ringCenter = _towers.BeatTowers[0].transform.position;
+        foreach (var beat in _towers.BeatTowers)
         {
-            ringCenter = strike.transform.position;
-            ringRadius = strike.Range;
-            strike.CollectEnemiesInRange(hit);
+            var tower = beat.GetComponent<Tower>();
+            if (tower == null)
+                continue;
+
+            ringCenter = tower.transform.position;
+            ringRadius = tower.Range;
+            tower.CollectEnemiesInRange(hit);
         }
 
         CombatVfxService.Instance?.PlayOverloadRing(ringCenter, ringRadius);
@@ -167,18 +171,22 @@ public class CommandEffectController : MonoBehaviour
 
     void ApplyChainZap(JudgmentResult judgment)
     {
-        if (_towers == null || _towers.BoostTowers.Count == 0)
+        if (_towers == null || !_towers.HasAnyTower)
         {
-            Debug.Log("[Rhythm] ChainZap — BoostTower 없음 (데미지 없음)");
+            Debug.Log("[Rhythm] ChainZap — 타워 없음 (데미지 없음)");
             return;
         }
 
         var inRange = new HashSet<EnemyHealth>();
         var leaders = new List<EnemyHealth>();
-        foreach (var boost in _towers.BoostTowers)
+        foreach (var beat in _towers.BeatTowers)
         {
-            boost.CollectEnemiesInRange(inRange);
-            var leader = boost.GetPathLeaderInRange();
+            var tower = beat.GetComponent<Tower>();
+            if (tower == null)
+                continue;
+
+            tower.CollectEnemiesInRange(inRange);
+            var leader = tower.GetPathLeaderInRange();
             if (leader != null && !leaders.Contains(leader))
                 leaders.Add(leader);
         }
