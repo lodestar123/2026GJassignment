@@ -111,7 +111,47 @@ public static class StartSceneVisualBuilder
         core.color = new Color(0.95f, 0.78f, 0.22f, 0.95f);
 
         BuildBeatRail(decor);
+        BuildSyncSlider(decor);
         BuildFloatingNotes(decor);
+    }
+
+    /// <summary>Decor 하단 BeatRail 아래 싱크 조절 슬라이더.</summary>
+    public static void BuildSyncSlider(Transform decor)
+    {
+        if (decor == null || decor.Find("SyncSlider") != null)
+            return;
+
+        var root = new GameObject("SyncSlider", typeof(RectTransform));
+        root.transform.SetParent(decor, false);
+        var rootRt = root.GetComponent<RectTransform>();
+        rootRt.anchorMin = rootRt.anchorMax = new Vector2(0.5f, 0f);
+        rootRt.pivot = new Vector2(0.5f, 0f);
+        rootRt.anchoredPosition = new Vector2(0f, 10f);
+        rootRt.sizeDelta = new Vector2(440f, 30f);
+
+        var panel = CreateImage(root.transform, "Panel");
+        StretchFull(panel.rectTransform);
+        panel.color = new Color(0.08f, 0.1f, 0.14f, 0.72f);
+        panel.raycastTarget = true;
+
+        var label = CreateText(root.transform, "Label", "싱크 0ms", 12f);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        var labelRt = label.rectTransform;
+        labelRt.anchorMin = new Vector2(0f, 0f);
+        labelRt.anchorMax = new Vector2(0f, 1f);
+        labelRt.pivot = new Vector2(0f, 0.5f);
+        labelRt.anchoredPosition = new Vector2(10f, 0f);
+        labelRt.sizeDelta = new Vector2(150f, 0f);
+        label.color = new Color(0.72f, 0.78f, 0.88f, 0.9f);
+
+        var slider = CreateHorizontalSlider(root.transform, "Slider");
+        var sliderRt = slider.GetComponent<RectTransform>();
+        sliderRt.anchorMin = new Vector2(0f, 0.5f);
+        sliderRt.anchorMax = new Vector2(1f, 0.5f);
+        sliderRt.pivot = new Vector2(0.5f, 0.5f);
+        sliderRt.anchoredPosition = Vector2.zero;
+        sliderRt.offsetMin = new Vector2(162f, -8f);
+        sliderRt.offsetMax = new Vector2(-10f, 8f);
     }
 
     /// <summary>기존 Decor 아래 BeatRail만 교체(TrackArea 마이그레이션).</summary>
@@ -343,14 +383,54 @@ public static class StartSceneVisualBuilder
         return go.GetComponent<RectTransform>();
     }
 
-    static Image CreateImage(Transform parent, string name)
+    static Image CreateImage(Transform parent, string name, bool raycastTarget = false)
     {
         var go = new GameObject(name, typeof(RectTransform), typeof(Image));
         go.transform.SetParent(parent, false);
         var img = go.GetComponent<Image>();
         img.sprite = UiSprite;
-        img.raycastTarget = false;
+        img.raycastTarget = raycastTarget;
         return img;
+    }
+
+    static Slider CreateHorizontalSlider(Transform parent, string name)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Slider));
+        go.transform.SetParent(parent, false);
+
+        var background = CreateImage(go.transform, "Background", raycastTarget: true);
+        StretchFull(background.rectTransform);
+        background.color = new Color(0.14f, 0.16f, 0.22f, 1f);
+
+        var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+        fillArea.transform.SetParent(go.transform, false);
+        var fillAreaRt = fillArea.GetComponent<RectTransform>();
+        StretchRect(fillAreaRt, new Vector2(0.02f, 0.22f), new Vector2(0.98f, 0.78f));
+
+        var fill = CreateImage(fillArea.transform, "Fill");
+        StretchFull(fill.rectTransform);
+        fill.color = new Color(Cyan.r, Cyan.g, Cyan.b, 0.85f);
+
+        var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
+        handleArea.transform.SetParent(go.transform, false);
+        var handleAreaRt = handleArea.GetComponent<RectTransform>();
+        StretchFull(handleAreaRt);
+
+        var handle = CreateImage(handleArea.transform, "Handle", raycastTarget: true);
+        var handleRt = handle.rectTransform;
+        handleRt.sizeDelta = new Vector2(12f, 0f);
+        handleRt.anchorMin = new Vector2(0f, 0f);
+        handleRt.anchorMax = new Vector2(0f, 1f);
+        handleRt.pivot = new Vector2(0.5f, 0.5f);
+        handleRt.anchoredPosition = Vector2.zero;
+        handle.color = new Color(0.92f, 0.95f, 1f, 1f);
+
+        var slider = go.GetComponent<Slider>();
+        slider.targetGraphic = handle;
+        slider.fillRect = fill.rectTransform;
+        slider.handleRect = handleRt;
+        slider.direction = Slider.Direction.LeftToRight;
+        return slider;
     }
 
     static TextMeshProUGUI CreateText(Transform parent, string name, string text, float size)

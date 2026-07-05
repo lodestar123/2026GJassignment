@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 매치 시작 전 3·2·1 카운트다운 → BGM → 입력 offset 대기 → 게임 시작.
+/// 매치 시작 전 3·2·1 카운트다운 → BGM 재생과 동시에 비트 원점 동기화 → 게임 시작.
+/// 입력 offset은 judged 축(RhythmInputSettings)에서만 적용 — 스타트 씬과 동일.
 /// </summary>
 public class GameStartCountdownUI : MonoBehaviour, IRuntimeSceneUi
 {
@@ -15,13 +16,6 @@ public class GameStartCountdownUI : MonoBehaviour, IRuntimeSceneUi
     [SerializeField] float stepSeconds = 1f;
     [SerializeField] int startNumber = 3;
     [SerializeField] float numberFontSize = 128f;
-
-    [Header("BGM → beat sync")]
-    [Tooltip("켜면 RhythmInputSettings 적용 offset(baseline+감도)을 대기 시간으로 사용합니다.")]
-    [SerializeField] bool useInputOffsetForBgmDelay = true;
-    [Min(0f)]
-    [Tooltip("useInputOffsetForBgmDelay가 꺼져 있을 때, BGM 재생 후 비트·게임 시작까지 대기(초).")]
-    [SerializeField] float bgmStartDelaySeconds = 0.24f;
 
     Coroutine _routine;
     RectTransform _countRect;
@@ -98,33 +92,8 @@ public class GameStartCountdownUI : MonoBehaviour, IRuntimeSceneUi
         if (bgm != null)
             bgm.Play();
 
-        yield return WaitAfterBgmStart(bgm, GetBgmStartDelaySeconds());
-
         BeatClock.Instance?.ResyncMeasureStart();
         GameManager.Instance?.BeginMatch();
-    }
-
-    float GetBgmStartDelaySeconds()
-    {
-        return useInputOffsetForBgmDelay
-            ? RhythmInputSettings.GetAppliedOffsetSeconds()
-            : bgmStartDelaySeconds;
-    }
-
-    static IEnumerator WaitAfterBgmStart(SceneBgmPlayer bgm, float delaySeconds)
-    {
-        if (delaySeconds <= 0f)
-            yield break;
-
-        if (bgm != null && bgm.IsPlaying)
-        {
-            float wait = delaySeconds - (Time.unscaledTime - bgm.BgmStartTimeUnscaled);
-            if (wait > 0f)
-                yield return new WaitForSecondsRealtime(wait);
-            yield break;
-        }
-
-        yield return new WaitForSecondsRealtime(delaySeconds);
     }
 
     void ShowNumber(int value)

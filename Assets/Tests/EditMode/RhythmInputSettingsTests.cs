@@ -31,6 +31,12 @@ namespace BeatDefender.Tests
         }
 
         [Test]
+        public void DefaultInputOffsetAdjustment_IsMinus024()
+        {
+            Assert.AreEqual(-0.24f, RhythmInputSettings.DefaultInputOffsetAdjustment, 0.0001f);
+        }
+
+        [Test]
         public void ZeroAdjustment_UsesBaseline024()
         {
             var settings = _go.AddComponent<RhythmInputSettings>();

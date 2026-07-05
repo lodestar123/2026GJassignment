@@ -5053,8 +5053,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c71fe27c41cc84bb4a39c45c8283ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::RhythmInputSettings
-  inputOffsetAdjustment: 0
-  loadFromPlayerPrefsOnAwake: 0
+  inputOffsetAdjustment: -0.24
+  loadFromPlayerPrefsOnAwake: 1
   additionalReservedKeys: 
 --- !u!114 &947142864
 MonoBehaviour:

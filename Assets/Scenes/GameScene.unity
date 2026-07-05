@@ -17957,7 +17957,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: BeatDefender::SimpleAudio
   metronomeVolume: 0.35
   sfxVolume: 0.5
-  playMetronomeSound: 1
+  playMetronomeSound: 0
   regularTickHz: 880
   downbeatTickHz: 1320
   downbeatVolumeMultiplier: 1.5
@@ -18076,7 +18076,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c71fe27c41cc84bb4a39c45c8283ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::RhythmInputSettings
-  inputOffsetAdjustment: -0.2
+  inputOffsetAdjustment: -0.1
   loadFromPlayerPrefsOnAwake: 1
   additionalReservedKeys: 
 --- !u!114 &1785167799
@@ -21632,8 +21632,6 @@ MonoBehaviour:
   stepSeconds: 1
   startNumber: 3
   numberFontSize: 128
-  useInputOffsetForBgmDelay: 1
-  bgmStartDelaySeconds: 0
 --- !u!1 &2102578651
 GameObject:
   m_ObjectHideFlags: 0

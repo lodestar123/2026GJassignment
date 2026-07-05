@@ -11,6 +11,7 @@ public class StartSceneRhythmBootstrap : MonoBehaviour
         EnsureBeatClock();
         EnsureRhythmCommandDetector();
         EnsureRhythmTimelineUi();
+        EnsureSyncSliderUi();
     }
 
     void EnsureBeatClock()
@@ -39,5 +40,11 @@ public class StartSceneRhythmBootstrap : MonoBehaviour
 
         if (rail.GetComponent<RhythmTimelineUI>() == null)
             rail.gameObject.AddComponent<RhythmTimelineUI>();
+    }
+
+    void EnsureSyncSliderUi()
+    {
+        if (GetComponent<StartSceneSyncSliderUI>() == null)
+            gameObject.AddComponent<StartSceneSyncSliderUI>();
     }
 }

@@ -10,7 +10,7 @@ public class SimpleAudio : MonoBehaviour
 
     [Header("Metronome - downbeat")]
     [Tooltip("메트로놈 비트 틱 소리 (시각 연출과 무관)")]
-    [SerializeField] bool playMetronomeSound = true;
+    [SerializeField] bool playMetronomeSound = false;
     public float regularTickHz = 880f;
     public float downbeatTickHz = 1320f;
     [Range(1f, 2f)] public float downbeatVolumeMultiplier = 1.5f;

@@ -39,6 +39,7 @@ public static class StartSceneEditor
         if (menu.transform.Find("Background") != null)
         {
             UpgradeBeatRailIfNeeded(menu.transform as RectTransform);
+            UpgradeSyncSliderIfNeeded(menu.transform as RectTransform);
             EnsureRhythmStack(menu);
             var scene = menu.gameObject.scene;
             EditorSceneManager.MarkSceneDirty(scene);
@@ -78,6 +79,7 @@ public static class StartSceneEditor
             presentation = Undo.AddComponent<StartScenePresentation>(menu.gameObject);
 
         UpgradeBeatRailIfNeeded(menu.transform as RectTransform);
+        UpgradeSyncSliderIfNeeded(menu.transform as RectTransform);
 
         var bakeSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/UI/UiSquare.png")
             ?? AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Square.png");
@@ -116,6 +118,18 @@ public static class StartSceneEditor
         StartSceneVisualBuilder.BuildBeatRailOnly(decor);
     }
 
+    static void UpgradeSyncSliderIfNeeded(RectTransform root)
+    {
+        if (root == null)
+            return;
+
+        var decor = root.Find("Decor");
+        if (decor == null)
+            return;
+
+        StartSceneVisualBuilder.BuildSyncSlider(decor);
+    }
+
     static void EnsureRhythmStack(StartMenuUI menu)
     {
         var go = menu.gameObject;
@@ -123,6 +137,9 @@ public static class StartSceneEditor
 
         if (go.GetComponent<StartSceneRhythmBootstrap>() == null)
             Undo.AddComponent<StartSceneRhythmBootstrap>(go);
+
+        if (go.GetComponent<StartSceneSyncSliderUI>() == null)
+            Undo.AddComponent<StartSceneSyncSliderUI>(go);
 
         if (go.GetComponent<BeatClock>() == null)
             Undo.AddComponent<BeatClock>(go);
