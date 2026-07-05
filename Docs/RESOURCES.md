@@ -13,7 +13,7 @@
 | 스프라이트 | `Assets/Sprites/Circle.png`, `Square.png` | 프로시저럴 `SpriteFactory` 병행 |
 | 오디오 | `SimpleAudio.cs` — 사인파 비프 | 실제 클립 없음 |
 | 타일맵 | 미구현 | MAP.md 그리드 기준 greybox |
-| UI 아트 | TextMesh Pro 텍스트 위주 | Scroll·Rail 그래픽 미제작 |
+| UI 아트 | TMP + Phase B/C UI · greybox 맵/타워/적 | 그래픽 에셋 플레이스홀더 |
 
 **MVP:** 위 플레이스홀더로 기능 검증 → **Phase E (Juice)** 에서 본 문서 **필수(M)** 항목 교체.
 

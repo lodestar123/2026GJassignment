@@ -9,7 +9,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  [Core HP]  [Gold]  [3:00 타이머]   [강공격 CD][가속 CD] │  ← 상단 HUD (~6%)
+│  [Core HP]  [Gold]  [2:00 타이머]   [강공격 CD][가속 CD] │  ← 상단 HUD (~6%)
 ├──────────┬──────────────────────────────────────────────┤
 │          │                                              │
 │  Rhythm  │           ★ PLAYFIELD (맵) ★                 │
@@ -88,10 +88,12 @@ Y=-4  .  .  .  .  .  .  .  .  .
 ```
 
 - `S1/S2`: 스폰 포인트 (적 생성 위치)
-- `★`: Core — BoxCollider2D + BaseHealth
-- `═`: 적 이동 경로 (Waypoint 또는 Tilemap Walk)
-- `◻`: TowerPlacementCell (클릭 설치)
+- `★`: Core — BoxCollider2D + BaseHealth (하이어라키에서 **위치 이동 가능**)
+- `═`: 적 이동 경로 — **`Path_S1` / `Path_S2` 자식(P0, P1…)** 웨이포인트. Play 시 `MapPathProvider`가 읽음
+- `◻`: TowerPlacementCell — **슬롯 Transform 이동** 시 Play에서 위치 유지
 - `.`: 벽 또는 빈 공간
+
+> **씬 편집:** `--- Map ---` 아래 Path·슬롯·Core를 Hierarchy에서 옮기면 Play에 반영됩니다. `MapLayout.cs`는 SceneBuilder 초기값·fallback용입니다.
 
 ### 2.4 스킬과 맵 시너지
 
@@ -129,4 +131,5 @@ Y=-4  .  .  .  .  .  .  .  .  .
 | 날짜 | 변경 |
 |------|------|
 | 2026-07-03 | 화면 레이아웃 + 본진 하단·양쪽 스폰·합류 초크 맵 초안 |
+| 2026-07-04 | Phase C greybox 좌표 · MapLayout · 14 슬롯 구현 |
 | 2026-07-03 | **2분**, 타워 3종, 강공격=원형 dedupe |

@@ -1,0 +1,21 @@
+{
+    "name": "BeatDefender.Editor",
+    "rootNamespace": "",
+    "references": [
+        "BeatDefender",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "optionalUnityReferences": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
