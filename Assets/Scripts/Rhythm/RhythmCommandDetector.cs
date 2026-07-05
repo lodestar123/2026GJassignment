@@ -89,18 +89,21 @@ public class RhythmCommandDetector : MonoBehaviour
         if (Time.timeScale <= 0f)
             return;
 
-        if (Time.time < _inputStunUntil)
+        if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
             return;
 
-        if (RhythmKeyFilter.TryGetRhythmKeysDown(_frameKeys) > 0)
+        bool keyDown = RhythmKeyFilter.TryGetRhythmKeysDown(_frameKeys) > 0;
+        if (keyDown)
         {
             float rawTime = Time.time;
             EmitTapFeedback(rawTime);
-            if (commandsEnabled)
+
+            if (Time.time >= _inputStunUntil && commandsEnabled)
                 RegisterTap(rawTime);
         }
 
-        TryCloseIfExpired();
+        if (Time.time >= _inputStunUntil)
+            TryCloseIfExpired();
     }
 
     void HandleSelectionChanged(CommandType type)
@@ -142,10 +145,12 @@ public class RhythmCommandDetector : MonoBehaviour
         float duration = BeatClock.Instance.EffectiveMeasureDuration;
         float scale = BeatClock.Instance.PatternTimeScale;
 
-        var quality = RhythmPatternLibrary.EvaluateTapNearestGuide(
-            felt, pattern, duration, scale);
+        if (!RhythmPatternLibrary.TryEvaluateTapNearestGuide(
+                felt, pattern, duration, scale, out var evaluation))
+            return;
 
-        OnTapTimingFeedback?.Invoke(felt, quality);
+        float displayFelt = RhythmPatternLibrary.GetMarkerDisplayFelt(felt, in evaluation, scale);
+        OnTapTimingFeedback?.Invoke(displayFelt, evaluation.Quality);
     }
 
     void RegisterTap(float rawTime)
@@ -182,7 +187,7 @@ public class RhythmCommandDetector : MonoBehaviour
             return;
         }
 
-        CloseSequence();
+        AbortSequence();
         StartSequence(time);
     }
 
@@ -263,7 +268,12 @@ public class RhythmCommandDetector : MonoBehaviour
         if (RhythmPatternLibrary.TryMatchSinglePattern(_seqTaps, duration, scale, pattern, out var judgment))
             ResolveCommand(pattern.Type, judgment, _evalSnapshot.Count, duration);
         else
-            ResolveCommand(CommandType.None, JudgmentResult.Miss, _evalSnapshot.Count, duration);
+            ResolveCommand(
+                CommandType.None,
+                JudgmentResult.Miss,
+                _evalSnapshot.Count,
+                duration,
+                applyInputStun: ShouldStunOnMiss(_evalSnapshot.Count, pattern.TapCount));
 
         _seqTaps.Clear();
     }
@@ -274,7 +284,12 @@ public class RhythmCommandDetector : MonoBehaviour
         _seqTaps.Clear();
     }
 
-    void ResolveCommand(CommandType type, JudgmentResult judgment, int tapCount, float cycleDuration)
+    void ResolveCommand(
+        CommandType type,
+        JudgmentResult judgment,
+        int tapCount,
+        float cycleDuration,
+        bool applyInputStun = true)
     {
         if (type != CommandType.None && judgment != JudgmentResult.Miss)
         {
@@ -298,7 +313,7 @@ public class RhythmCommandDetector : MonoBehaviour
         _stats?.RecordJudgment(judgment);
         OnCommandResolved?.Invoke(type, judgment);
 
-        if (judgment == JudgmentResult.Miss)
+        if (judgment == JudgmentResult.Miss && applyInputStun)
             _inputStunUntil = Time.time + JudgmentRewards.MissInputStunSeconds;
 
         if (type == CommandType.None && judgment == JudgmentResult.Miss)
@@ -315,6 +330,15 @@ public class RhythmCommandDetector : MonoBehaviour
             _towers != null && _towers.HasAnyTower,
         _ => true
     };
+
+    static bool ShouldStunOnMiss(int tapCount, int patternTapCount)
+    {
+        // 다타 패턴 중간에 끊긴 타임아웃은 스턴 없음 — 연속 입력이 씹히는 체감 방지.
+        if (tapCount > 1 && tapCount < patternTapCount)
+            return false;
+
+        return true;
+    }
 
     static string FormatTaps(List<float> taps)
     {

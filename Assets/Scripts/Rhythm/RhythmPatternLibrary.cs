@@ -26,6 +26,11 @@ public static class RhythmPatternLibrary
 {
     public const float JudgmentGoodSeconds = 0.22f;
     public const float JudgmentPerfectSeconds = 0.11f;
+    /// <summary>
+    /// 마커를 가이드에 스냅하는 표시용 창(기준 초). Perfect 판정 + 이 창 이내일 때만 스냅.
+    /// JudgmentPerfectSeconds와 같으면 Perfect 전부 스냅, 더 좁히면 “거의 정확” 입력만 스냅.
+    /// </summary>
+    public const float VisualMarkerSnapSeconds = JudgmentPerfectSeconds;
     public const float MinTapGapReference = 0.02f;
     public const float MinVisualTapGapReference = 0.008f;
 
@@ -54,6 +59,7 @@ public static class RhythmPatternLibrary
 
     public static float GetJudgmentGood(float timeScale) => JudgmentGoodSeconds * timeScale;
     public static float GetJudgmentPerfect(float timeScale) => JudgmentPerfectSeconds * timeScale;
+    public static float GetVisualMarkerSnap(float timeScale) => VisualMarkerSnapSeconds * timeScale;
     public static float GetMinVisualTapGap(float timeScale) => MinVisualTapGapReference * timeScale;
 
     /// <summary>마디 내 felt 시각 vs 패턴 슬롯 — 탭 즉시 피드백.</summary>
@@ -79,19 +85,65 @@ public static class RhythmPatternLibrary
         float measureDuration,
         float timeScale)
     {
+        return TryEvaluateTapNearestGuide(
+            feltSecondsInMeasure, pattern, measureDuration, timeScale, out var eval)
+            ? eval.Quality
+            : TapTimingQuality.Miss;
+    }
+
+    /// <summary>가장 가까운 가이드 + 판정 + 스냅용 메타. 게임플레이 타이밍은 변경하지 않음.</summary>
+    public static bool TryEvaluateTapNearestGuide(
+        float feltSecondsInMeasure,
+        RhythmPattern pattern,
+        float measureDuration,
+        float timeScale,
+        out TapNearestGuideEvaluation evaluation)
+    {
+        evaluation = TapNearestGuideEvaluation.Invalid;
+
         if (pattern.TapCount <= 0 || measureDuration <= 0f)
-            return TapTimingQuality.Miss;
+            return false;
 
         var expected = pattern.GetExpectedHitTimes(measureDuration);
+        int bestIndex = 0;
         float bestDelta = float.MaxValue;
         for (int i = 0; i < expected.Length; i++)
         {
             float delta = UnityEngine.Mathf.Abs(feltSecondsInMeasure - expected[i]);
             if (delta < bestDelta)
+            {
                 bestDelta = delta;
+                bestIndex = i;
+            }
         }
 
-        return EvaluateDelta(bestDelta, timeScale);
+        evaluation = new TapNearestGuideEvaluation(
+            EvaluateDelta(bestDelta, timeScale),
+            bestIndex,
+            pattern.HitFractions[bestIndex],
+            expected[bestIndex],
+            bestDelta);
+        return true;
+    }
+
+    /// <summary>타임라인 마커 표시용 felt — Perfect + visual snap 창 이내면 가이드 위치.</summary>
+    public static float GetMarkerDisplayFelt(
+        float feltSecondsInMeasure,
+        in TapNearestGuideEvaluation evaluation,
+        float timeScale)
+    {
+        if (!evaluation.IsValid || !ShouldSnapMarkerToGuide(in evaluation, timeScale))
+            return feltSecondsInMeasure;
+
+        return evaluation.GuideSecondsInMeasure;
+    }
+
+    public static bool ShouldSnapMarkerToGuide(in TapNearestGuideEvaluation evaluation, float timeScale)
+    {
+        if (!evaluation.IsValid || evaluation.Quality != TapTimingQuality.Perfect)
+            return false;
+
+        return evaluation.AbsDeltaSeconds <= GetVisualMarkerSnap(timeScale);
     }
 
     public static TapTimingQuality EvaluateDelta(float absDelta, float timeScale)

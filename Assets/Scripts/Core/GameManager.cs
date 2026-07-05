@@ -42,6 +42,18 @@ public class GameManager : MonoBehaviour
         if (_core != null)
             _core.OnDestroyed += HandleCoreDestroyed;
 
+        ElapsedSeconds = 0f;
+        OnTimerChanged?.Invoke(RemainingSeconds);
+
+        if (FindAnyObjectByType<GameStartCountdownUI>() == null)
+            BeginMatch();
+    }
+
+    public void BeginMatch()
+    {
+        if (_ended || IsRunning)
+            return;
+
         IsRunning = true;
         ElapsedSeconds = 0f;
         OnTimerChanged?.Invoke(RemainingSeconds);

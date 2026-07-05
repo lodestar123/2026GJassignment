@@ -20,8 +20,8 @@ public class RhythmInputSettings : MonoBehaviour
     public const float DefaultInputOffsetSeconds = BaselineInputOffsetSeconds;
 
     /// <summary>플레이어 감도 조정 범위(±). 0 = baseline.</summary>
-    public const float MinInputOffsetAdjustment = -0.1f;
-    public const float MaxInputOffsetAdjustment = 0.1f;
+    public const float MinInputOffsetAdjustment = -0.3f;
+    public const float MaxInputOffsetAdjustment = 0.3f;
 
     public static RhythmInputSettings Instance { get; private set; }
 

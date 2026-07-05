@@ -82,7 +82,12 @@ public class BeatClock : MonoBehaviour
 
     void Start()
     {
-        BeginCycle();
+        var scene = SceneManager.GetActiveScene();
+        if (scene.name == SceneNames.Game && FindAnyObjectByType<GameStartCountdownUI>() != null)
+            _cycleRunning = false;
+        else
+            BeginCycle();
+
         TryBuildInvincibleToggleUi();
     }
 
@@ -122,6 +127,9 @@ public class BeatClock : MonoBehaviour
         _beatsSinceCycleStart = 0;
         OnMeasureStart?.Invoke();
     }
+
+    /// <summary>BGM 선행 대기 후 마디·메트로놈 원점 재동기화.</summary>
+    public void ResyncMeasureStart() => BeginCycle();
 
     void EndCycleAndBeginNext()
     {

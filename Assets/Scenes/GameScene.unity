@@ -4214,6 +4214,7 @@ RectTransform:
   - {fileID: 1065620067}
   - {fileID: 1398393247}
   - {fileID: 839562690}
+  - {fileID: 2099600002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -6498,6 +6499,7 @@ MonoBehaviour:
   markerGoodPulseScale: 1.28
   markerMissPulseScale: 1.05
   playTapSound: 1
+  applyScriptLayoutOnAwake: 1
 --- !u!114 &553065354
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9362,7 +9364,7 @@ Sprite:
       height: 4
     textureRectOffset: {x: 0, y: 0}
     atlasRectOffset: {x: -1, y: -1}
-    settingsRaw: 3136
+    settingsRaw: 64
     uvTransform: {x: 4, y: 2, z: 4, w: 2}
     downscaleMultiplier: 1
   m_AtlasRD:
@@ -15408,7 +15410,7 @@ Sprite:
       height: 8
     textureRectOffset: {x: 0, y: 0}
     atlasRectOffset: {x: -1, y: -1}
-    settingsRaw: 3136
+    settingsRaw: 64
     uvTransform: {x: 8, y: 4, z: 8, w: 4}
     downscaleMultiplier: 1
   m_AtlasRD:
@@ -17897,6 +17899,7 @@ GameObject:
   - component: {fileID: 1785167788}
   - component: {fileID: 1785167787}
   - component: {fileID: 1785167786}
+  - component: {fileID: 1785167804}
   m_Layer: 0
   m_Name: --- Systems ---
   m_TagString: Untagged
@@ -17954,11 +17957,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: BeatDefender::SimpleAudio
   metronomeVolume: 0.35
   sfxVolume: 0.5
+  playMetronomeSound: 1
   regularTickHz: 880
   downbeatTickHz: 1320
   downbeatVolumeMultiplier: 1.5
   regularTickDuration: 0.04
   downbeatTickDuration: 0.06
+  playTapFeedbackSound: 0
+  playJudgmentSound: 0
+  playGoldPulseSound: 0
 --- !u!114 &1785167790
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18056,6 +18063,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b9e07d99a41e2a418a5b2f74800c69d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::RhythmCommandDetector
+  commandsEnabled: 1
 --- !u!114 &1785167798
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18068,7 +18076,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c71fe27c41cc84bb4a39c45c8283ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::RhythmInputSettings
-  inputOffsetAdjustment: 0
+  inputOffsetAdjustment: -0.04
   loadFromPlayerPrefsOnAwake: 1
   additionalReservedKeys: 
 --- !u!114 &1785167799
@@ -18138,6 +18146,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1785167804
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1785167785}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8e2c91a4b6d3e705948a1b2c3d4e5f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BeatDefender::SceneBgmPlayer
+  bgmClip: {fileID: 8300000, guid: 4092f44abe95934449d15f8f93c3b182, type: 3}
+  volume: 0.45
+  loop: 1
+  playOnAwake: 1
+  duckOnPause: 1
+  pauseVolumeMultiplier: 0.4
 --- !u!1 &1787079076
 GameObject:
   m_ObjectHideFlags: 0
@@ -21552,6 +21578,61 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!1 &2099600001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2099600002}
+  - component: {fileID: 2099600003}
+  m_Layer: 0
+  m_Name: GameStartCountdownUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2099600002
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2099600001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 370615083}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &2099600003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2099600001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3b4c5d6e7f8091a2b3c4d5e6f708192, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BeatDefender::GameStartCountdownUI
+  countText: {fileID: 0}
+  overlay: {fileID: 0}
+  stepSeconds: 1
+  startNumber: 3
+  numberFontSize: 128
+  useInputOffsetForBgmDelay: 1
+  bgmStartDelaySeconds: 0
 --- !u!1 &2102578651
 GameObject:
   m_ObjectHideFlags: 0

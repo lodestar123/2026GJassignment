@@ -9,11 +9,23 @@ public class SimpleAudio : MonoBehaviour
     [Range(0f, 1f)] public float sfxVolume = 0.5f;
 
     [Header("Metronome - downbeat")]
+    [Tooltip("메트로놈 비트 틱 소리 (시각 연출과 무관)")]
+    [SerializeField] bool playMetronomeSound = true;
     public float regularTickHz = 880f;
     public float downbeatTickHz = 1320f;
     [Range(1f, 2f)] public float downbeatVolumeMultiplier = 1.5f;
     public float regularTickDuration = 0.04f;
     public float downbeatTickDuration = 0.06f;
+
+    [Header("Rhythm input feedback")]
+    [Tooltip("박자 탭 시 Perfect/Good/Miss 비프음")]
+    [SerializeField] bool playTapFeedbackSound = false;
+    [Tooltip("커맨드 판정 비프음 (PERFECT/GOOD/MISS/COOLDOWN 등)")]
+    [SerializeField] bool playJudgmentSound = false;
+
+    [Header("Skill feedback")]
+    [Tooltip("골드펄스 성공 시 비프음")]
+    [SerializeField] bool playGoldPulseSound = false;
 
     AudioSource _source;
     bool _subscribed;
@@ -72,7 +84,13 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayMetronomeTick()
     {
-        if (_source == null)
+        if (_source == null || !playMetronomeSound)
+            return;
+
+        if (GameStartCountdownUI.Instance != null && GameStartCountdownUI.Instance.IsActive)
+            return;
+
+        if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
             return;
 
         bool downbeat = BeatClock.Instance != null && BeatClock.Instance.IsDownbeat;
@@ -93,6 +111,9 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayTapFeedback(TapTimingQuality quality)
     {
+        if (!playTapFeedbackSound)
+            return;
+
         switch (quality)
         {
             case TapTimingQuality.Perfect:
@@ -109,6 +130,9 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayJudgment(JudgmentResult result)
     {
+        if (!playJudgmentSound)
+            return;
+
         switch (result)
         {
             case JudgmentResult.Perfect:
@@ -153,6 +177,9 @@ public class SimpleAudio : MonoBehaviour
 
     public void PlayGoldPulse()
     {
+        if (!playGoldPulseSound)
+            return;
+
         PlayBeep(980f, 0.06f, sfxVolume * 0.35f, 1.25f);
     }
 

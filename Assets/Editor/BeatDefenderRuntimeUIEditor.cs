@@ -75,6 +75,7 @@ public static class BeatDefenderRuntimeUIEditor
         RemoveLegacyObjects();
         PlaceUi<CoreCrisisOverlay>(root, "CoreCrisisOverlay", 0);
         PlaceUi<JudgmentEdgeFlashUI>(root, "JudgmentEdgeFlashUI", 1);
+        PlaceUi<GameStartCountdownUI>(root, "GameStartCountdownUI", -1);
         PlaceUi<MatchMilestoneAlertUI>(root, "MatchMilestoneAlertUI", -1);
         PlaceUi<EliteSpawnAlertUI>(root, "EliteSpawnAlertUI", -1);
         PlaceUi<PlacementSlotTooltipUI>(root, "PlacementSlotTooltipUI", -1);

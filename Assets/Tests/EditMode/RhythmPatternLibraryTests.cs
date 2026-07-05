@@ -196,5 +196,74 @@ namespace BeatDefender.Tests
                 three, 1f, 1f, shot, out var judgment));
             Assert.AreEqual(JudgmentResult.Perfect, judgment);
         }
+
+        [Test]
+        public void TryEvaluateTapNearestGuide_NearSecondBeat_PicksHalfFraction()
+        {
+            Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.GoldPulse, out var gold));
+
+            Assert.IsTrue(RhythmPatternLibrary.TryEvaluateTapNearestGuide(
+                0.48f, gold, measureDuration: 1f, timeScale: 1f, out var eval));
+
+            Assert.AreEqual(TapTimingQuality.Perfect, eval.Quality);
+            Assert.AreEqual(1, eval.GuideSlotIndex);
+            Assert.AreEqual(0.5f, eval.GuideFraction, 0.0001f);
+            Assert.AreEqual(0.5f, eval.GuideSecondsInMeasure, 0.0001f);
+            Assert.AreEqual(0.02f, eval.AbsDeltaSeconds, 0.0001f);
+        }
+
+        [Test]
+        public void GetMarkerDisplayFelt_PerfectWithinSnapWindow_SnapsToGuide()
+        {
+            Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.GoldPulse, out var gold));
+            Assert.IsTrue(RhythmPatternLibrary.TryEvaluateTapNearestGuide(
+                0.505f, gold, 1f, 1f, out var eval));
+
+            float display = RhythmPatternLibrary.GetMarkerDisplayFelt(0.505f, in eval, timeScale: 1f);
+            Assert.AreEqual(0.5f, display, 0.0001f);
+        }
+
+        [Test]
+        public void GetMarkerDisplayFelt_Good_DoesNotSnap()
+        {
+            float goodMid = (RhythmPatternLibrary.JudgmentPerfectSeconds
+                + RhythmPatternLibrary.JudgmentGoodSeconds) * 0.5f;
+            Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.GoldPulse, out var gold));
+            Assert.IsTrue(RhythmPatternLibrary.TryEvaluateTapNearestGuide(
+                goodMid, gold, 1f, 1f, out var eval));
+
+            Assert.AreEqual(TapTimingQuality.Good, eval.Quality);
+            float display = RhythmPatternLibrary.GetMarkerDisplayFelt(goodMid, in eval, timeScale: 1f);
+            Assert.AreEqual(goodMid, display, 0.0001f);
+        }
+
+        [Test]
+        public void ShouldSnapMarkerToGuide_PerfectAtSnapEdge_Snaps()
+        {
+            float edge = RhythmPatternLibrary.VisualMarkerSnapSeconds;
+            Assert.IsTrue(RhythmPatternLibrary.TryGetByType(CommandType.GoldPulse, out var gold));
+            Assert.IsTrue(RhythmPatternLibrary.TryEvaluateTapNearestGuide(
+                edge, gold, 1f, 1f, out var eval));
+
+            Assert.AreEqual(TapTimingQuality.Perfect, eval.Quality);
+            Assert.IsTrue(RhythmPatternLibrary.ShouldSnapMarkerToGuide(in eval, timeScale: 1f));
+            Assert.AreEqual(0f, RhythmPatternLibrary.GetMarkerDisplayFelt(edge, in eval, 1f), 0.0001f);
+        }
+
+        [Test]
+        public void ShouldSnapMarkerToGuide_PerfectOutsideVisualWindow_DoesNotSnap()
+        {
+            var eval = new TapNearestGuideEvaluation(
+                TapTimingQuality.Perfect,
+                guideSlotIndex: 0,
+                guideFraction: 0f,
+                guideSecondsInMeasure: 0f,
+                absDeltaSeconds: 0.09f);
+
+            float tightScale = 0.5f;
+            Assert.AreEqual(0.055f, RhythmPatternLibrary.GetVisualMarkerSnap(tightScale), 0.0001f);
+            Assert.IsFalse(RhythmPatternLibrary.ShouldSnapMarkerToGuide(in eval, tightScale));
+            Assert.AreEqual(0.09f, RhythmPatternLibrary.GetMarkerDisplayFelt(0.09f, in eval, tightScale), 0.0001f);
+        }
     }
 }

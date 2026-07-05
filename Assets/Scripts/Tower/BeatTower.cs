@@ -84,6 +84,9 @@ public class BeatTower : MonoBehaviour
         if (Time.timeScale <= 0f)
             return;
 
+        if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
+            return;
+
         float damage = FallbackDamage;
 
         var target = _tower.GetPathLeaderInRange();
