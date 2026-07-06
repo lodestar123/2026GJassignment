@@ -71,14 +71,16 @@ public class ContinuousSpawner : MonoBehaviour
 
         if (phase.Simultaneous)
         {
-            SpawnFromSide(MapLayout.SpawnS1, phase);
+            SpawnFromSide(phase, isLeftSide: true);
             if (_alive.Count < FieldCap)
-                SpawnFromSide(MapLayout.SpawnS2, phase);
+                SpawnFromSide(phase, isLeftSide: false);
         }
         else
         {
-            var spawn = _spawnFromS1 ? MapLayout.SpawnS1 : MapLayout.SpawnS2;
-            SpawnFromSide(spawn, phase);
+            if (_spawnFromS1)
+                SpawnFromSide(phase, isLeftSide: true);
+            else
+                SpawnFromSide(phase, isLeftSide: false);
             _spawnFromS1 = !_spawnFromS1;
         }
 
@@ -91,39 +93,48 @@ public class ContinuousSpawner : MonoBehaviour
         _spawnIntervalScale = Mathf.Min(_spawnIntervalScale, Mathf.Clamp(intervalScale, 0.25f, 1f));
     }
 
-    void SpawnFromSide(Vector2 spawnPos, SpawnPhase phase)
+    void SpawnFromSide(SpawnPhase phase, bool isLeftSide)
     {
         for (int i = 0; i < phase.CountPerSide && _alive.Count < FieldCap; i++)
-            TrySpawn(spawnPos, phase);
+            TrySpawn(phase, isLeftSide);
     }
 
-    void TrySpawn(Vector2 spawnPos, SpawnPhase phase)
+    void TrySpawn(SpawnPhase phase, bool isLeftSide)
     {
         if (_alive.Count >= FieldCap)
             return;
 
         var kind = Random.value < phase.DownbeatChance ? EnemyKind.Downbeat : EnemyKind.EighthNote;
-        var waypoints = spawnPos.x < 0f
-            ? (MapPathProvider.Instance != null
-                ? MapPathProvider.Instance.GetPathForLeftSpawn()
-                : MapLayout.PathFromS1)
-            : (MapPathProvider.Instance != null
-                ? MapPathProvider.Instance.GetPathForRightSpawn()
-                : MapLayout.PathFromS2);
-        SpawnEnemy(spawnPos, waypoints, kind);
+        var waypoints = GetWaypoints(isLeftSide);
+        if (waypoints == null || waypoints.Length == 0)
+            return;
+
+        SpawnEnemy(waypoints[0], waypoints, kind);
     }
 
     public void SpawnEliteWave(EliteTier tier)
     {
-        var pathLeft = MapPathProvider.Instance != null
-            ? MapPathProvider.Instance.GetPathForLeftSpawn()
-            : MapLayout.PathFromS1;
-        var pathRight = MapPathProvider.Instance != null
-            ? MapPathProvider.Instance.GetPathForRightSpawn()
-            : MapLayout.PathFromS2;
+        var pathLeft = GetWaypoints(leftSide: true);
+        var pathRight = GetWaypoints(leftSide: false);
+        if (pathLeft == null || pathLeft.Length == 0 || pathRight == null || pathRight.Length == 0)
+            return;
 
-        SpawnEnemy(MapLayout.SpawnS1, pathLeft, EnemyKind.Elite, tier);
-        SpawnEnemy(MapLayout.SpawnS2, pathRight, EnemyKind.Elite, tier);
+        SpawnEnemy(pathLeft[0], pathLeft, EnemyKind.Elite, tier);
+        SpawnEnemy(pathRight[0], pathRight, EnemyKind.Elite, tier);
+    }
+
+    static Vector2[] GetWaypoints(bool leftSide)
+    {
+        if (MapPathProvider.Instance != null)
+        {
+            return leftSide
+                ? MapPathProvider.Instance.GetPathForLeftSpawn()
+                : MapPathProvider.Instance.GetPathForRightSpawn();
+        }
+
+        return leftSide
+            ? MapPathProvider.GetScenePathOrLayout(MapPathProvider.PathS1Name, MapLayout.PathFromS1)
+            : MapPathProvider.GetScenePathOrLayout(MapPathProvider.PathS2Name, MapLayout.PathFromS2);
     }
 
     void SpawnEnemy(Vector2 spawnPos, Vector2[] waypoints, EnemyKind kind, EliteTier eliteTier = EliteTier.None)

@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 통합 타워 배치 HUD — Tower 20G · 재클릭 시 배치 모드 해제.
+/// 통합 타워 배치 HUD — TowerPlacementCost · 재클릭 시 배치 모드 해제.
 /// </summary>
 public class TowerTypeSelectUI : MonoBehaviour
 {

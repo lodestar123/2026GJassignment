@@ -20,6 +20,7 @@ public static class MapPrefabBuilder
     const string TowerLv1Path = "Assets/Sprites/Tower_Level1_1.png";
     const string TowerLv2Path = "Assets/Sprites/Tower_Level2.png";
     const string TowerLv3Path = "Assets/Sprites/Tower_Level3.png";
+    const string TowerLv3SpriteName = "Tower_Level3_1";
     const string PlacementEmptyPath = "Assets/Sprites/PlacementTile_Empty_1.png";
     const string PlacementAvailablePath = "Assets/Sprites/PlacementTile_Available.png";
     const string CoreSpritePath = "Assets/Sprites/DefensePoint_Core_1.png";
@@ -56,6 +57,34 @@ public static class MapPrefabBuilder
         }
 
         Debug.Log("Beat Defender: Map visuals applied from MapPrefabRegistry.");
+    }
+
+    [MenuItem("Beat Defender/Rebuild GameScene Spawn Points")]
+    public static void RebuildGameSceneSpawnPoints()
+    {
+        if (!File.Exists(GameScenePath))
+        {
+            Debug.LogError($"GameScene not found: {GameScenePath}");
+            return;
+        }
+
+        MapPrefabRegistry.InvalidateCache();
+        var registry = MapPrefabRegistry.Get();
+        if (registry == null)
+        {
+            Debug.LogError("Beat Defender: MapPrefabRegistry not found.");
+            return;
+        }
+
+        var scene = EditorSceneManager.GetActiveScene();
+        if (scene.name != SceneNames.Game)
+            scene = EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
+
+        MapSpawnPointBuilder.EnsureAll();
+        MapSceneVisuals.ApplyAll();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        Debug.Log("Beat Defender: GameScene spawn points rebuilt (Spawn_S1 / Spawn_S2).");
     }
 
     [MenuItem("Beat Defender/Rebuild GameScene Placement Grid")]
@@ -96,6 +125,7 @@ public static class MapPrefabBuilder
 
         Undo.RegisterFullObjectHierarchyUndo(grid.gameObject, "Rebuild Placement Grid");
         grid.BuildForEditor();
+        MapSpawnPointBuilder.EnsureAll();
         MapSceneVisuals.ApplyAll();
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
@@ -110,7 +140,7 @@ public static class MapPrefabBuilder
 
         var towerLv1 = LoadSprite(TowerLv1Path) ?? GreyboxSprites.Square;
         var towerLv2 = LoadSprite(TowerLv2Path) ?? towerLv1;
-        var towerLv3 = LoadSprite(TowerLv3Path) ?? towerLv2;
+        var towerLv3 = LoadSprite(TowerLv3Path, TowerLv3SpriteName) ?? towerLv2;
         var placementEmpty = LoadSprite(PlacementEmptyPath) ?? GreyboxSprites.Square;
         var placementAvailable = LoadSprite(PlacementAvailablePath) ?? placementEmpty;
         var coreSprite = LoadSprite(CoreSpritePath) ?? GreyboxSprites.Circle;
@@ -281,9 +311,19 @@ public static class MapPrefabBuilder
         EditorUtility.SetDirty(registry);
     }
 
-    static Sprite LoadSprite(string assetPath) =>
-        AssetDatabase.LoadAllAssetsAtPath(assetPath).OfType<Sprite>().FirstOrDefault()
-        ?? AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+    static Sprite LoadSprite(string assetPath, string spriteName = null)
+    {
+        var sprites = AssetDatabase.LoadAllAssetsAtPath(assetPath).OfType<Sprite>();
+        if (!string.IsNullOrEmpty(spriteName))
+        {
+            var named = sprites.FirstOrDefault(sprite => sprite.name == spriteName);
+            if (named != null)
+                return named;
+        }
+
+        return sprites.FirstOrDefault()
+            ?? AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+    }
 
     static void EnsureFolder(string path)
     {

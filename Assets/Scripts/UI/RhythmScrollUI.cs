@@ -3,7 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 좌측 Rhythm Scroll — 4패턴 카드 · 선택 · CD · Tab 확대/축소.
+/// 좌측 Rhythm Scroll — 패턴 카드 · 선택 · CD · Tab 확대/축소.
+/// 제목·설명·박자 도형은 Inspector / Hierarchy에서 직접 지정.
 /// </summary>
 public class RhythmScrollUI : MonoBehaviour
 {
@@ -18,6 +19,15 @@ public class RhythmScrollUI : MonoBehaviour
         public TextMeshProUGUI CooldownText;
         public Image AccentBar;
         public Image Background;
+
+        [Tooltip("카드 제목 (예: 일반 공격). 비우면 TitleText 내용을 덮어쓰지 않음.")]
+        public string Title;
+
+        [Tooltip("짧은 설명. 비우면 PatternText는 숨기고 PatternVisual만 사용 가능.")]
+        public string Description;
+
+        [Tooltip("박자 도형 등 직접 만든 UI 자식. Tab 축소 시 함께 숨김.")]
+        public GameObject PatternVisual;
     }
 
     [SerializeField] RectTransform panelRect;
@@ -63,6 +73,19 @@ public class RhythmScrollUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Tab))
             ToggleExpanded();
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        if (cards == null || !isActiveAndEnabled)
+            return;
+
+        foreach (var card in cards)
+            ApplyCardCopy(card);
+
+        ApplyExpandedState();
+    }
+#endif
 
     void WireCardButtons()
     {
@@ -126,16 +149,7 @@ public class RhythmScrollUI : MonoBehaviour
             selector.OnSelectionChanged += HandleSelectionChanged;
         }
 
-        var tempo = TempoController.Instance ?? FindAnyObjectByType<TempoController>();
-        if (tempo != null)
-        {
-            tempo.OnTempoChanged -= RefreshTempoStacks;
-            tempo.OnTempoChanged += RefreshTempoStacks;
-            tempo.OnTempoChanged -= RefreshPatternHints;
-            tempo.OnTempoChanged += RefreshPatternHints;
-        }
-
-        _subscribed = cooldowns != null || selector != null || tempo != null;
+        _subscribed = cooldowns != null || selector != null;
     }
 
     void TryUnsubscribe()
@@ -150,13 +164,6 @@ public class RhythmScrollUI : MonoBehaviour
         if (selector != null)
             selector.OnSelectionChanged -= HandleSelectionChanged;
 
-        var tempo = TempoController.Instance ?? FindAnyObjectByType<TempoController>();
-        if (tempo != null)
-        {
-            tempo.OnTempoChanged -= RefreshTempoStacks;
-            tempo.OnTempoChanged -= RefreshPatternHints;
-        }
-
         _subscribed = false;
     }
 
@@ -170,10 +177,8 @@ public class RhythmScrollUI : MonoBehaviour
 
     void ApplyExpandedState()
     {
-        if (panelRect == null)
-            return;
-
-        panelRect.sizeDelta = new Vector2(_expanded ? expandedWidth : collapsedWidth, panelRect.sizeDelta.y);
+        if (panelRect != null)
+            panelRect.sizeDelta = new Vector2(_expanded ? expandedWidth : collapsedWidth, panelRect.sizeDelta.y);
 
         if (cards == null)
             return;
@@ -183,76 +188,50 @@ public class RhythmScrollUI : MonoBehaviour
             if (card?.Root == null)
                 continue;
 
+            bool showDescription = ShouldShowDescription(card);
             if (card.PatternText != null)
-                card.PatternText.gameObject.SetActive(_expanded);
+                card.PatternText.gameObject.SetActive(_expanded && showDescription);
+
+            if (card.PatternVisual != null)
+                card.PatternVisual.SetActive(_expanded);
+
             if (card.CooldownText != null)
                 card.CooldownText.gameObject.SetActive(_expanded);
         }
     }
 
+    static bool ShouldShowDescription(PatternCard card) =>
+        !string.IsNullOrEmpty(card.Description)
+        || (card.PatternVisual == null && card.PatternText != null && !string.IsNullOrEmpty(card.PatternText.text));
+
     void RefreshAll()
     {
-        if (cards == null || BeatClock.Instance == null)
+        if (cards == null)
             return;
-
-        float md = BeatClock.Instance.EffectiveMeasureDuration;
 
         foreach (var card in cards)
         {
             if (card?.Root == null)
                 continue;
 
-            card.AccentBar.color = GetAccent(card.Type);
-            card.TitleText.text = GetTitle(card.Type);
-            card.PatternText.text = RhythmPatternLibrary.FormatPatternHint(card.Type, md);
+            if (card.AccentBar != null)
+                card.AccentBar.color = GetAccent(card.Type);
+
+            ApplyCardCopy(card);
         }
 
         RefreshCooldowns();
-        RefreshTempoStacks();
         RefreshSelectionVisual();
+        ApplyExpandedState();
     }
 
-    void RefreshPatternHints()
+    void ApplyCardCopy(PatternCard card)
     {
-        if (cards == null || BeatClock.Instance == null)
-            return;
+        if (card.TitleText != null && !string.IsNullOrEmpty(card.Title))
+            card.TitleText.text = card.Title;
 
-        float md = BeatClock.Instance.EffectiveMeasureDuration;
-        foreach (var card in cards)
-        {
-            if (card?.PatternText == null)
-                continue;
-
-            card.PatternText.text = RhythmPatternLibrary.FormatPatternHint(card.Type, md);
-        }
-    }
-
-    void RefreshTempoStacks()
-    {
-        if (cards == null)
-            return;
-
-        var tempo = TempoController.Instance;
-        foreach (var card in cards)
-        {
-            if (card?.CooldownText == null)
-                continue;
-
-            if (card.Type == CommandType.TempoUp)
-            {
-                int stacks = tempo != null ? tempo.FastStacks : 0;
-                card.CooldownText.text = stacks > 0
-                    ? $"Fast x{stacks}/{TempoController.MaxStacksPerDirection}"
-                    : "";
-            }
-            else if (card.Type == CommandType.TempoDown)
-            {
-                int stacks = tempo != null ? tempo.SlowStacks : 0;
-                card.CooldownText.text = stacks > 0
-                    ? $"Slow x{stacks}/{TempoController.MaxStacksPerDirection}"
-                    : "";
-            }
-        }
+        if (card.PatternText != null && !string.IsNullOrEmpty(card.Description))
+            card.PatternText.text = card.Description;
     }
 
     void RefreshSelectionVisual()
@@ -301,13 +280,11 @@ public class RhythmScrollUI : MonoBehaviour
                 float rem = cooldowns != null ? cooldowns.GetRemaining(CommandType.ChainZap) : 0f;
                 card.CooldownText.text = rem > 0f ? $"CD {rem:0.0}s" : "";
             }
-            else if (card.Type != CommandType.TempoUp && card.Type != CommandType.TempoDown)
+            else
             {
                 card.CooldownText.text = "";
             }
         }
-
-        RefreshTempoStacks();
     }
 
     static Color GetAccent(CommandType type) => type switch
@@ -319,16 +296,5 @@ public class RhythmScrollUI : MonoBehaviour
         CommandType.TempoUp => TempoUpColor,
         CommandType.TempoDown => TempoDownColor,
         _ => Color.gray
-    };
-
-    static string GetTitle(CommandType type) => type switch
-    {
-        CommandType.GoldPulse => "Gold",
-        CommandType.RhythmShot => "Shot",
-        CommandType.OverloadStrike => "Strike",
-        CommandType.ChainZap => "Chain",
-        CommandType.TempoUp => "Fast",
-        CommandType.TempoDown => "Slow",
-        _ => type.ToString()
     };
 }

@@ -8,9 +8,14 @@ public class TowerPlacer : MonoBehaviour
 {
     public static TowerPlacer Instance { get; private set; }
 
-    public const int TowerCost = 20;
+    public const int DefaultTowerCost = 50;
+
+    [SerializeField] int towerCost = DefaultTowerCost;
 
     [SerializeField] Transform towerRoot;
+
+    /// <summary>씬 TowerPlacer 인스펙터에서 조절. Instance 없으면 <see cref="DefaultTowerCost"/>.</summary>
+    public static int TowerCost => Instance != null ? Instance.towerCost : DefaultTowerCost;
 
     public void SetTowerRoot(Transform root) => towerRoot = root;
 

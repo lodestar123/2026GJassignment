@@ -2,12 +2,13 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// MAP.md 배치 슬롯 — Slot_N 인덱스와 slotUnlockRules 로 초기 해금 지정.
+/// MAP.md 배치 슬롯 — Slot_N 인덱스와 slotUnlockRules 로 Rebuild 시 해금 지정.
+/// 플레이 중에는 각 TowerPlacementCell 인스펙터 설정이 그대로 유지됩니다.
 /// </summary>
 public class PlacementGrid : MonoBehaviour
 {
-    [Header("Slot Unlock")]
-    [Tooltip("비어 있으면 모든 슬롯 시작 시 해금. 항목 있는 슬롯만 규칙 적용, 나머지는 locked + defaultLockedUnlockCost")]
+    [Header("Slot Unlock (Rebuild 시에만 적용)")]
+    [Tooltip("Rebuild GameScene Placement Grid 메뉴 실행 시에만 반영. 플레이 중에는 각 Slot 오브젝트 인스펙터 설정이 우선합니다.")]
     [SerializeField] PlacementSlotUnlockRule[] slotUnlockRules;
 
     [SerializeField] int defaultLockedUnlockCost = 20;
@@ -21,7 +22,6 @@ public class PlacementGrid : MonoBehaviour
     void Start()
     {
         EnsureCells();
-        ApplyUnlockRules();
     }
 
     MapLayoutDefinition ResolveLayout()

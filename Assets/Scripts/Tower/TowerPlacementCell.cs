@@ -7,8 +7,7 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider2D))]
 public class TowerPlacementCell : MonoBehaviour
 {
-    [Header("Unlock (맵 수정 시 셀마다 직접 지정 가능)")]
-    [SerializeField] bool useLocalUnlockSettings;
+    [Header("Unlock")]
     [SerializeField] bool unlockedAtStart = true;
     [SerializeField] int unlockGoldCost = 20;
 
@@ -44,14 +43,9 @@ public class TowerPlacementCell : MonoBehaviour
 
     public void RefreshFromRegistry() => RefreshVisual();
 
-    /// <summary>PlacementGrid 규칙 적용 — useLocalUnlockSettings 이면 무시.</summary>
-    public void ApplyGridUnlockRule(bool unlockedAtStart, int goldCost)
-    {
-        if (useLocalUnlockSettings)
-            return;
-
+    /// <summary>PlacementGrid 일괄 규칙 적용 — Rebuild 시에만 호출.</summary>
+    public void ApplyGridUnlockRule(bool unlockedAtStart, int goldCost) =>
         ConfigureUnlock(unlockedAtStart, goldCost);
-    }
 
     public void ConfigureUnlock(bool unlocked, int goldCost)
     {
@@ -104,8 +98,7 @@ public class TowerPlacementCell : MonoBehaviour
     void Awake()
     {
         EnsureVisual();
-        if (useLocalUnlockSettings)
-            ConfigureUnlock(unlockedAtStart, unlockGoldCost);
+        ConfigureUnlock(unlockedAtStart, unlockGoldCost);
     }
 
     void EnsureVisual()

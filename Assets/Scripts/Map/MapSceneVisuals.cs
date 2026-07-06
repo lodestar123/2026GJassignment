@@ -17,6 +17,7 @@ public static class MapSceneVisuals
         }
 
         ApplyCore(registry);
+        MapSpawnPointBuilder.EnsureAll();
         ApplyPathMarkers(registry);
         ApplyPlacementCells();
     }
@@ -38,18 +39,11 @@ public static class MapSceneVisuals
     static void ApplyPathMarkers(MapPrefabRegistry registry)
     {
         var pathSprite = GetPrefabBodySprite(registry.PathWaypointMarker);
-        if (pathSprite != null)
-        {
-            ApplySpriteToChildren("Path_S1", pathSprite);
-            ApplySpriteToChildren("Path_S2", pathSprite);
-        }
-
-        var spawnSprite = GetPrefabBodySprite(registry.SpawnPointMarker);
-        if (spawnSprite == null)
+        if (pathSprite == null)
             return;
 
-        ApplySpriteToChildren("Spawn_S1", spawnSprite);
-        ApplySpriteToChildren("Spawn_S2", spawnSprite);
+        ApplySpriteToChildren("Path_S1", pathSprite);
+        ApplySpriteToChildren("Path_S2", pathSprite);
     }
 
     static void ApplyPlacementCells()
