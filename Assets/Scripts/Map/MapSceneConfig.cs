@@ -22,6 +22,8 @@ public class MapSceneConfig : MonoBehaviour
         Instance = this;
     }
 
+    void Start() => MapSceneVisuals.ApplyAll();
+
     void OnDestroy()
     {
         if (Instance == this)

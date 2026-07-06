@@ -130,12 +130,24 @@ public static class TutorialVisualBuilder
 
         var gridGo = new GameObject("PlacementGrid");
         gridGo.transform.SetParent(worldRoot.transform, false);
-        gridGo.AddComponent<PlacementGrid>();
+        var grid = gridGo.AddComponent<PlacementGrid>();
 
-        var slotGo = new GameObject("Slot_0");
-        slotGo.transform.SetParent(gridGo.transform, false);
+        var registry = MapPrefabRegistry.Instance;
+        GameObject slotGo;
+        if (registry != null && registry.TowerPlacementCell != null)
+        {
+            slotGo = PrefabSpawnUtility.Instantiate(registry.TowerPlacementCell, gridGo.transform);
+            slotGo.name = "Slot_0";
+        }
+        else
+        {
+            slotGo = new GameObject("Slot_0");
+            slotGo.transform.SetParent(gridGo.transform, false);
+            slotGo.AddComponent<TowerPlacementCell>();
+        }
+
         slotGo.transform.position = new Vector3(0f, 0.5f, 0f);
-        var cell = slotGo.AddComponent<TowerPlacementCell>();
+        var cell = slotGo.GetComponent<TowerPlacementCell>();
         cell.Initialize(0, new Vector2(0f, 0.5f));
         cell.ConfigureUnlock(true, 0);
 

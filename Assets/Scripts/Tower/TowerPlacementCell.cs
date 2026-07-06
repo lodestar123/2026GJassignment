@@ -18,6 +18,7 @@ public class TowerPlacementCell : MonoBehaviour
     public int UnlockGoldCost { get; private set; }
 
     SpriteRenderer _sprite;
+    bool _usesRegistrySprite;
     Color _normalColor = new(0.2f, 0.65f, 0.35f, 0.35f);
     Color _hoverColor = new(0.35f, 0.85f, 0.45f, 0.55f);
     Color _blockedColor = new(0.85f, 0.25f, 0.25f, 0.45f);
@@ -40,6 +41,8 @@ public class TowerPlacementCell : MonoBehaviour
         SlotIndex = index;
         EnsureVisual();
     }
+
+    public void RefreshFromRegistry() => RefreshVisual();
 
     /// <summary>PlacementGrid 규칙 적용 — useLocalUnlockSettings 이면 무시.</summary>
     public void ApplyGridUnlockRule(bool unlockedAtStart, int goldCost)
@@ -107,14 +110,10 @@ public class TowerPlacementCell : MonoBehaviour
 
     void EnsureVisual()
     {
-        if (_sprite != null)
-            return;
-
-        _sprite = GetComponent<SpriteRenderer>();
+        _sprite ??= GetComponent<SpriteRenderer>();
         if (_sprite == null)
         {
             _sprite = gameObject.AddComponent<SpriteRenderer>();
-            _sprite.sprite = GreyboxSprites.Cell;
             _sprite.sortingOrder = 0;
             transform.localScale = Vector3.one * 0.85f;
         }
@@ -134,11 +133,35 @@ public class TowerPlacementCell : MonoBehaviour
         if (_sprite == null)
             return;
 
-        _sprite.color = IsUnlocked ? _normalColor : _lockedColor;
+        ApplyRegistrySprite();
+        _sprite.color = _usesRegistrySprite
+            ? Color.white
+            : IsUnlocked ? _normalColor : _lockedColor;
+    }
+
+    void ApplyRegistrySprite()
+    {
+        _usesRegistrySprite = false;
+        var registry = MapPrefabRegistry.Get();
+        if (registry == null)
+            return;
+
+        var sprite = IsUnlocked
+            ? registry.PlacementTileAvailable ?? registry.PlacementTileEmpty
+            : registry.PlacementTileEmpty ?? registry.PlacementTileAvailable;
+
+        if (sprite == null)
+            return;
+
+        _sprite.sprite = sprite;
+        _usesRegistrySprite = true;
     }
 
     Color GetHoverColor()
     {
+        if (_usesRegistrySprite)
+            return Color.white;
+
         if (!IsUnlocked)
         {
             int gold = ResourceManager.Instance != null ? ResourceManager.Instance.Gold : 0;

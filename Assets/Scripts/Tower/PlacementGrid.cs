@@ -118,12 +118,24 @@ public class PlacementGrid : MonoBehaviour
     {
         var slots = ResolveLayout().PlacementSlots;
         _cells = new TowerPlacementCell[slots.Length];
+        var cellPrefab = MapPrefabRegistry.Get()?.TowerPlacementCell;
 
         for (int i = 0; i < slots.Length; i++)
         {
-            var go = new GameObject($"Slot_{i}");
-            go.transform.SetParent(transform);
-            var cell = go.AddComponent<TowerPlacementCell>();
+            TowerPlacementCell cell;
+            if (cellPrefab != null)
+            {
+                var go = PrefabSpawnUtility.Instantiate(cellPrefab, transform);
+                go.name = $"Slot_{i}";
+                cell = go.GetComponent<TowerPlacementCell>();
+            }
+            else
+            {
+                var go = new GameObject($"Slot_{i}");
+                go.transform.SetParent(transform);
+                cell = go.AddComponent<TowerPlacementCell>();
+            }
+
             cell.Initialize(i, slots[i]);
             _cells[i] = cell;
         }

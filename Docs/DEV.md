@@ -79,6 +79,7 @@
 | UI/PauseMenuUI, ResultScreenUI, StartMenuUI | **Phase D 완료** |
 | PauseController, PracticeSceneLoader, ScoreCalculator | **Phase D 완료** |
 | **EditMode 자동 테스트** | `Assets/Tests/EditMode/` — 패턴·키필터·입력보정 |
+| **Map/Tower 프리팹** | `MapPrefabRegistry` + 메뉴 **Build Map & Tower Prefabs** |
 | ContinuousSpawner | **완료** — 120s 스케줄 · cap 22 |
 | GameManager · BaseHealth | **완료** — 120s 승리 · Core HP 25 |
 | MAP · PlacementGrid · TowerPlacer | **Phase C 완료** |
@@ -86,7 +87,22 @@
 
 ---
 
-## 3. 목표 아키텍처
+### Map / Tower prefabs (Enemy 패턴과 동일)
+
+| 에셋 | 경로 |
+|------|------|
+| Registry | `Assets/Resources/BeatDefender/MapPrefabRegistry.asset` |
+| BeatTower | `Assets/Prefabs/Towers/BeatTower.prefab` |
+| 배치 슬롯 | `Assets/Prefabs/Map/TowerPlacementCell.prefab` |
+| Core | `Assets/Prefabs/Map/Core.prefab` |
+| 경로 웨이포인트 | `Assets/Prefabs/Map/PathWaypointMarker.prefab` |
+| 스폰 마커 | `Assets/Prefabs/Map/SpawnPointMarker.prefab` |
+
+- 메뉴 **Beat Defender → Build Map & Tower Prefabs** — 프리팹 생성 + Registry 갱신
+- **Rebuild GameScene Placement Grid** — GameScene 슬롯을 프리팹 인스턴스로 재구성
+- 스프라이트 교체: Registry Inspector 또는 각 프리팹 `SpriteRenderer`에서 일괄 변경
+
+---
 
 ```
 Assets/Scripts/

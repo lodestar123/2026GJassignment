@@ -73,6 +73,7 @@ public static class BeatDefenderRuntimeUIEditor
         }
 
         RemoveLegacyObjects();
+        EnsureScreenSpaceCameraCanvas(root);
         PlaceUi<CoreCrisisOverlay>(root, "CoreCrisisOverlay", 0);
         PlaceUi<JudgmentEdgeFlashUI>(root, "JudgmentEdgeFlashUI", 1);
         PlaceUi<GameStartCountdownUI>(root, "GameStartCountdownUI", -1);
@@ -134,6 +135,39 @@ public static class BeatDefenderRuntimeUIEditor
         // TutorialUI / TowerTypeSelect / TutorialPlacement — GameScene 복사 대신 전용 bake
         TutorialSceneEditor.BakeTutorialSceneUi(silent: true);
         return true;
+    }
+
+    static void EnsureScreenSpaceCameraCanvas(Transform root)
+    {
+        var canvas = root.GetComponent<Canvas>();
+        if (canvas == null)
+            return;
+
+        Camera cam = null;
+        foreach (var c in UnityEngine.Object.FindObjectsByType<Camera>(
+                     FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (!c.CompareTag("MainCamera"))
+                continue;
+
+            cam = c;
+            break;
+        }
+
+        if (cam != null)
+        {
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = cam;
+            canvas.planeDistance = 100f;
+        }
+
+        canvas.vertexColorAlwaysGammaSpace = true;
+        canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, GameplayCanvasSetup.DefaultSortingOrder);
+
+        if (root.GetComponent<GameplayCanvasSetup>() == null)
+            Undo.AddComponent<GameplayCanvasSetup>(root.gameObject);
+
+        EditorUtility.SetDirty(canvas);
     }
 
     static Transform FindGameplayCanvasRoot(Scene scene)

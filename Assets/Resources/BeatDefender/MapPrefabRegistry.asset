@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aba6941191fc43d4ca75689f675d81a6, type: 3}
+  m_Name: MapPrefabRegistry
+  m_EditorClassIdentifier: BeatDefender::MapPrefabRegistry
+  beatTower: {fileID: 6246509017741971619, guid: 71defb67d2ee53345a4cb3889c0ba7ef, type: 3}
+  towerPlacementCell: {fileID: 5329930333061043036, guid: f9d843d014f2f6e4abcbafcfa470920a, type: 3}
+  core: {fileID: 7245246261309561088, guid: 91cd6661bc944a240883178b7413510d, type: 3}
+  pathWaypointMarker: {fileID: 8000009382802053875, guid: acff18812de1bda42bc24ba0db495182, type: 3}
+  spawnPointMarker: {fileID: 5566528480364595696, guid: dfb1892a9886f014597eb2613605d9b5, type: 3}
+  placementTileEmpty: {fileID: -8584646689047436376, guid: 14222c62153eccb49abfe76aafabeb5c, type: 3}
+  placementTileAvailable: {fileID: 4808362319744301272, guid: 99b8824dcd106eb47bc8b7c4a5ea16bc, type: 3}
+  towerLevel1: {fileID: -7331960727541536983, guid: 187727564c809a94fa10f18d5f21e9fd, type: 3}
+  towerLevel2: {fileID: -856918673377590900, guid: 79b57a90c7bc689458177615f024fcb5, type: 3}
+  towerLevel3: {fileID: 7324471177615021692, guid: b74be533112f31641928853e7b711b50, type: 3}
+  coreSprite: {fileID: -1324244303058380218, guid: d278addf7da2aaf44bcebadf799c57c7, type: 3}
+  rangeRingSprite: {fileID: 1687773583878432027, guid: 99bccbb09c08a864da72942c5b0cd796, type: 3}

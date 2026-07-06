@@ -77,9 +77,9 @@ public class CommandEffectController : MonoBehaviour
 
         if (!perfect)
         {
-            var hudPos = Camera.main != null
-                ? Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.88f, 10f))
-                : Vector3.zero;
+        var hudPos = Camera.main != null
+            ? Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.88f, 10f))
+            : Vector3.zero;
             CombatVfxService.Instance?.PlayGoldPulsePopup(hudPos, reward);
         }
 

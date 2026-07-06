@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 타워 사거리 greybox 링 — Play 중 항상 표시.
+/// 타워 사거리 링 — MapPrefabRegistry.RangeRingSprite, 스프라이트 bounds 기준으로 range에 맞춤.
 /// </summary>
 [RequireComponent(typeof(Tower))]
 public class TowerRangeVisualizer : MonoBehaviour
@@ -17,30 +17,57 @@ public class TowerRangeVisualizer : MonoBehaviour
         CreateRing();
     }
 
-    void OnEnable() => Refresh();
+    void Start() => RefreshFromRegistry();
+
+    void OnEnable() => RefreshFromRegistry();
 
 #if UNITY_EDITOR
     void OnValidate()
     {
         if (_tower == null)
             _tower = GetComponent<Tower>();
+
+        // OnValidate/임포트 중 AssetDatabase 로드 금지 — scale만 갱신
+        CreateRing();
         Refresh();
     }
 #endif
+
+    public void RefreshFromRegistry()
+    {
+        CreateRing();
+        ApplyRingSprite();
+        Refresh();
+    }
 
     void CreateRing()
     {
         if (_ring != null)
             return;
 
+        var existing = transform.Find("RangeRing");
+        if (existing != null)
+        {
+            _ring = existing.GetComponent<SpriteRenderer>();
+            return;
+        }
+
         var go = new GameObject("RangeRing");
         go.transform.SetParent(transform, false);
         go.transform.localPosition = Vector3.zero;
 
         _ring = go.AddComponent<SpriteRenderer>();
-        _ring.sprite = GreyboxSprites.Ring;
         _ring.sortingOrder = 1;
-        Refresh();
+    }
+
+    void ApplyRingSprite()
+    {
+        if (_ring == null)
+            return;
+
+        var registry = MapPrefabRegistry.Get();
+        var sprite = registry != null ? registry.ResolveRangeRingSprite() : null;
+        _ring.sprite = sprite != null ? sprite : GreyboxSprites.Ring;
     }
 
     void Refresh()
@@ -48,8 +75,22 @@ public class TowerRangeVisualizer : MonoBehaviour
         if (_tower == null || _ring == null)
             return;
 
-        float diameter = _tower.Range * 2f;
-        _ring.transform.localScale = new Vector3(diameter, diameter, 1f);
+        float targetDiameter = _tower.Range * 2f;
+        float spriteDiameter = GetSpriteWorldDiameter(_ring.sprite);
+        float scale = spriteDiameter > 0.0001f
+            ? targetDiameter / spriteDiameter
+            : targetDiameter;
+
+        _ring.transform.localScale = new Vector3(scale, scale, 1f);
         _ring.color = new Color(1f, 1f, 1f, alpha);
+    }
+
+    static float GetSpriteWorldDiameter(Sprite sprite)
+    {
+        if (sprite == null)
+            return 1f;
+
+        var size = sprite.bounds.size;
+        return Mathf.Max(size.x, size.y);
     }
 }

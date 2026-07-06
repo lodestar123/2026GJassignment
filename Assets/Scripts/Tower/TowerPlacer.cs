@@ -160,15 +160,47 @@ public class TowerPlacer : MonoBehaviour
 
     void PlaceTower(TowerPlacementCell cell, int spentGold)
     {
+        var tower = SpawnTower(cell.transform.position);
+        if (tower == null)
+            return;
+
+        cell.SetOccupant(tower);
+        _towers.Add(tower);
+        _registry?.RegisterTower(tower);
+
+        CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, spentGold);
+        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position);
+        Debug.Log($"[TowerPlacer] Tower 설치 ({spentGold}G)");
+    }
+
+    Tower SpawnTower(Vector3 worldPosition)
+    {
+        var parent = towerRoot != null ? towerRoot : transform;
+        var registry = MapPrefabRegistry.Get();
+        var prefab = registry != null ? registry.GetTowerPrefab(TowerType.Beat) : null;
+
+        GameObject go;
+        if (prefab != null)
+        {
+            go = PrefabSpawnUtility.Instantiate(prefab, worldPosition, Quaternion.identity, parent);
+            go.name = "Tower";
+        }
+        else
+            go = CreateFallbackTower(worldPosition, parent);
+
+        go.GetComponent<BeatTower>()?.RefreshFromRegistry();
+        return go.GetComponent<Tower>();
+    }
+
+    static GameObject CreateFallbackTower(Vector3 worldPosition, Transform parent)
+    {
         var go = new GameObject("Tower");
-        go.transform.SetParent(towerRoot != null ? towerRoot : transform);
-        go.transform.position = cell.transform.position;
+        go.transform.SetParent(parent);
+        go.transform.position = worldPosition;
 
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = GreyboxSprites.Tower;
-        sr.color = Color.white;
         sr.sortingOrder = 10;
-        go.transform.localScale = Vector3.one * 0.6f;
+        sr.color = Color.white;
 
         var tower = go.AddComponent<Tower>();
         tower.towerType = TowerType.Beat;
@@ -182,14 +214,7 @@ public class TowerPlacer : MonoBehaviour
 
         go.AddComponent<TowerClickTarget>();
         go.AddComponent<TowerFireRecoil>();
-
-        cell.SetOccupant(tower);
-        _towers.Add(tower);
-        _registry?.RegisterTower(tower);
-
-        CombatVfxService.Instance?.PlayGoldSpendPopup(cell.transform.position, spentGold);
-        CombatVfxService.Instance?.PlayTowerPlaced(cell.transform.position);
-        Debug.Log($"[TowerPlacer] Tower 설치 ({spentGold}G)");
+        return go;
     }
 
     void RemoveTower(Tower tower, TowerPlacementCell cell)
@@ -234,36 +259,5 @@ public class TowerPlacer : MonoBehaviour
         }
 
         return null;
-    }
-}
-
-/// <summary>
-/// 타워 호버 → TowerSellUI.
-/// </summary>
-[RequireComponent(typeof(Tower))]
-public class TowerClickTarget : MonoBehaviour
-{
-    Tower _tower;
-
-    void Awake() => _tower = GetComponent<Tower>();
-
-    void OnMouseEnter()
-    {
-        if (!CanInteract())
-            return;
-
-        TowerSellUI.Resolve()?.Show(_tower);
-    }
-
-    bool CanInteract()
-    {
-        if (UnityEngine.EventSystems.EventSystem.current != null
-            && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-            return false;
-
-        if (GameManager.Instance != null && !GameManager.Instance.IsRunning)
-            return false;
-
-        return true;
     }
 }

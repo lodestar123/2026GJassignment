@@ -23,11 +23,15 @@ public class BeatTower : MonoBehaviour
         level = Mathf.Clamp(level, 1, BeatTowerUpgrade.MaxLevel);
         TowerRegistry.Instance?.Register(this);
         TowerRegistry.Instance?.RegisterTower(_tower);
-        ApplyLevelVisual();
+        RefreshFromRegistry();
     }
 
     void OnEnable() => TrySubscribe();
-    void Start() => TrySubscribe();
+    void Start()
+    {
+        TrySubscribe();
+        RefreshFromRegistry();
+    }
 
     void OnDestroy()
     {
@@ -64,7 +68,7 @@ public class BeatTower : MonoBehaviour
         int cost = NextUpgradeCost;
         _upgradeGoldSpent += cost;
         level++;
-        ApplyLevelVisual();
+        RefreshFromRegistry();
         return true;
     }
 
@@ -73,10 +77,31 @@ public class BeatTower : MonoBehaviour
         return TowerPlacer.GetCost(TowerType.Beat) + _upgradeGoldSpent;
     }
 
+    public void RefreshFromRegistry() => ApplyLevelVisual();
+
     void ApplyLevelVisual()
     {
-        float scale = 0.6f + (level - 1) * 0.06f;
+        float scale = Tower.BaseVisualScale + (level - 1) * 0.06f;
         transform.localScale = Vector3.one * scale;
+
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr == null)
+            sr = gameObject.AddComponent<SpriteRenderer>();
+
+        var registry = MapPrefabRegistry.Get();
+        var sprite = registry != null
+            ? registry.ResolveTowerLevelSprite(level)
+            : null;
+
+        if (sprite == null)
+            sprite = GreyboxSprites.Tower;
+
+        sr.sprite = sprite;
+        sr.color = Color.white;
+        if (sr.sortingOrder < 10)
+            sr.sortingOrder = 10;
+
+        GetComponent<TowerRangeVisualizer>()?.RefreshFromRegistry();
     }
 
     void OnBeat()
