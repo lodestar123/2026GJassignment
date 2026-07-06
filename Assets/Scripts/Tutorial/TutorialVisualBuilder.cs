@@ -12,7 +12,6 @@ public static class TutorialVisualBuilder
     static readonly Color BodyText = new(0.9f, 0.91f, 0.94f, 1f);
     static readonly Color ProgressText = new(0.65f, 0.68f, 0.75f, 0.9f);
     static readonly Color BtnColor = new(0.2f, 0.45f, 0.65f, 1f);
-    static readonly Color TowerBtnColor = new(0.12f, 0.12f, 0.14f, 0.88f);
 
     static Sprite _uiSprite;
 
@@ -28,7 +27,10 @@ public static class TutorialVisualBuilder
             BuildTutorialPanel(uiCanvasRoot);
 
         if (uiCanvasRoot != null && uiCanvasRoot.Find("TowerTypeSelect") == null)
-            BuildTowerTypeSelect(uiCanvasRoot);
+        {
+            TowerTypeSelectVisualBuilder.SetPreferredSprite(_uiSprite);
+            TowerTypeSelectVisualBuilder.BuildRoot(uiCanvasRoot);
+        }
 
         if (sceneRoot != null && sceneRoot.Find("TutorialPlacement") == null)
             BuildPlacementWorld(sceneRoot);
@@ -77,50 +79,6 @@ public static class TutorialVisualBuilder
 
         CreateButton(panel, "Btn_Next", "다음", new Vector2(1f, 0f), new Vector2(-24f, 24f));
         CreateButton(panel, "Btn_Skip", "건너뛰기", new Vector2(0f, 0f), new Vector2(24f, 24f));
-    }
-
-    public static void BuildTowerTypeSelect(Transform uiRoot)
-    {
-        var root = new GameObject("TowerTypeSelect", typeof(RectTransform));
-        root.transform.SetParent(uiRoot, false);
-
-        var rt = root.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(1f, 0f);
-        rt.anchorMax = new Vector2(1f, 0f);
-        rt.pivot = new Vector2(1f, 0f);
-        rt.anchoredPosition = new Vector2(-40f, 56f);
-        rt.sizeDelta = new Vector2(360f, 88f);
-
-        var layout = root.AddComponent<HorizontalLayoutGroup>();
-        layout.childAlignment = TextAnchor.MiddleRight;
-        layout.spacing = 8f;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = true;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-
-        var btnGo = new GameObject("Btn_Beat", typeof(RectTransform), typeof(Image), typeof(TowerTypeButton));
-        btnGo.transform.SetParent(root.transform, false);
-        var btnImg = btnGo.GetComponent<Image>();
-        btnImg.sprite = UiSprite;
-        btnImg.color = TowerBtnColor;
-        btnImg.raycastTarget = true;
-
-        var labelGo = new GameObject("Label", typeof(RectTransform));
-        labelGo.transform.SetParent(btnGo.transform, false);
-        StretchFull(labelGo.GetComponent<RectTransform>());
-        var label = labelGo.AddComponent<TextMeshProUGUI>();
-        label.text = $"Tower\n{TowerPlacer.TowerCost}G";
-        label.fontSize = 18f;
-        label.alignment = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
-        BeatDefenderFonts.Apply(label);
-
-        var selectUi = root.AddComponent<TowerTypeSelectUI>();
-        selectUi.SetTowerButtons(new[]
-        {
-            new TowerTypeSelectUI.TowerButton { Background = btnImg, Label = label }
-        });
     }
 
     public static GameObject BuildPlacementWorld(Transform sceneRoot)

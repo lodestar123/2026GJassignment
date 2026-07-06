@@ -1,4 +1,3 @@
-using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,31 +7,27 @@ using UnityEngine.UI;
 /// </summary>
 public class TowerTypeSelectUI : MonoBehaviour
 {
-    [Serializable]
-    public struct TowerButton
-    {
-        public Image Background;
-        public TextMeshProUGUI Label;
-    }
-
-    [SerializeField] TowerButton[] towerButtons;
+    [SerializeField] Image towerButton;
+    [SerializeField] TextMeshProUGUI towerButtonLabel;
     [SerializeField] Color selectedColor = new(0.25f, 0.55f, 0.85f, 0.95f);
     [SerializeField] Color normalColor = new(0.12f, 0.12f, 0.14f, 0.88f);
     [SerializeField] Color disabledColor = new(0.1f, 0.1f, 0.1f, 0.5f);
 
     ResourceManager _resources;
 
-    public void SetTowerButtons(TowerButton[] buttons)
+    public void SetTowerButton(Image background, TextMeshProUGUI label)
     {
-        towerButtons = buttons;
-        EnsureMouseOnlyControls();
+        towerButton = background;
+        towerButtonLabel = label;
+        EnsureMouseOnlyControl();
         Refresh();
     }
 
     void Awake()
     {
+        ResolveRefs();
         _resources = FindAnyObjectByType<ResourceManager>();
-        EnsureMouseOnlyControls();
+        EnsureMouseOnlyControl();
         TowerSelection.OnChanged -= Refresh;
         TowerSelection.OnChanged += Refresh;
     }
@@ -44,6 +39,7 @@ public class TowerTypeSelectUI : MonoBehaviour
 
     void OnEnable()
     {
+        ResolveRefs();
         if (_resources != null)
         {
             _resources.OnGoldChanged -= OnGoldChanged;
@@ -59,31 +55,37 @@ public class TowerTypeSelectUI : MonoBehaviour
             _resources.OnGoldChanged -= OnGoldChanged;
     }
 
-    void EnsureMouseOnlyControls()
+    void ResolveRefs()
     {
-        if (towerButtons == null)
+        if (towerButton == null)
+        {
+            towerButton = transform.Find("Btn_Tower")?.GetComponent<Image>()
+                ?? transform.Find("Btn_Beat")?.GetComponent<Image>();
+        }
+
+        if (towerButtonLabel == null && towerButton != null)
+            towerButtonLabel = towerButton.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
+    }
+
+    void EnsureMouseOnlyControl()
+    {
+        if (towerButton == null)
             return;
 
-        foreach (var entry in towerButtons)
-        {
-            if (entry.Background == null)
-                continue;
+        var go = towerButton.gameObject;
+        var legacyButton = go.GetComponent<Button>();
+        if (legacyButton != null)
+            Destroy(legacyButton);
 
-            var go = entry.Background.gameObject;
-            var legacyButton = go.GetComponent<Button>();
-            if (legacyButton != null)
-                Destroy(legacyButton);
-
-            if (go.GetComponent<TowerTypeButton>() == null)
-                go.AddComponent<TowerTypeButton>();
-        }
+        if (go.GetComponent<TowerTypeButton>() == null)
+            go.AddComponent<TowerTypeButton>();
     }
 
     void OnGoldChanged(int _) => Refresh();
 
     void Refresh()
     {
-        if (towerButtons == null || towerButtons.Length == 0)
+        if (towerButton == null)
             return;
 
         int gold = _resources != null ? _resources.Gold : 0;
@@ -92,33 +94,21 @@ public class TowerTypeSelectUI : MonoBehaviour
         bool canAfford = gold >= cost;
         bool interactable = canAfford || armed;
 
-        for (int i = 0; i < towerButtons.Length; i++)
+        if (towerButtonLabel != null)
         {
-            var entry = towerButtons[i];
-            if (entry.Background == null)
-                continue;
+            towerButtonLabel.text = armed
+                ? $"Tower\n{cost}G  ON"
+                : $"Tower\n{cost}G";
+        }
 
-            bool isPrimary = i == 0;
-            entry.Background.gameObject.SetActive(isPrimary);
-            if (!isPrimary)
-                continue;
+        towerButton.color = armed ? selectedColor
+            : canAfford ? normalColor : disabledColor;
 
-            var control = entry.Background.GetComponent<TowerTypeButton>();
-            if (entry.Label != null)
-            {
-                entry.Label.text = armed
-                    ? $"Tower\n{cost}G  ON"
-                    : $"Tower\n{cost}G";
-            }
-
-            entry.Background.color = armed ? selectedColor
-                : canAfford ? normalColor : disabledColor;
-
-            if (control != null)
-            {
-                control.Interactable = interactable;
-                control.SetRaycast(interactable);
-            }
+        var control = towerButton.GetComponent<TowerTypeButton>();
+        if (control != null)
+        {
+            control.Interactable = interactable;
+            control.SetRaycast(interactable);
         }
     }
 }

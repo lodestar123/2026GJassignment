@@ -8497,7 +8497,7 @@ MonoBehaviour:
   markerGoodPulseScale: 1.28
   markerMissPulseScale: 1.05
   playTapSound: 1
-  applyScriptLayoutOnAwake: 1
+  applyScriptLayoutOnAwake: 0
 --- !u!114 &1590069724
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -61,8 +61,8 @@ public class RhythmTimelineUI : MonoBehaviour
     bool playTapSound = true;
 
     [SerializeField]
-    [Tooltip("켜면 Awake에 스크립트 기본 크기·배치를 적용합니다. StartScene 등 씬 bake 레이아웃은 끄세요.")]
-    bool applyScriptLayoutOnAwake = true;
+    [Tooltip("켜면 Awake에 스크립트 기본 크기·배치를 적용합니다. 씬에서 직접 조절하려면 끄세요.")]
+    bool applyScriptLayoutOnAwake;
 
     readonly List<TapMarkerVisual> _activeMarkers = new();
     readonly List<Image> _guideLines = new();

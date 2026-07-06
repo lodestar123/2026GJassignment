@@ -33,14 +33,17 @@ public class CombatVfxService : MonoBehaviour
             Instance = null;
     }
 
-    public void PlayTowerShot(Vector3 from, Vector3 to, float damage, Transform towerTransform = null)
+    public void PlayTowerShot(Vector3 from, Vector3 to, float damage, Transform towerTransform = null,
+        EnemyHealth target = null)
     {
         bool fever = FeverTimeController.Instance != null && FeverTimeController.Instance.IsFeverActive;
         var color = ShotColor;
         if (fever)
             color = Color.Lerp(color, new Color(1f, 0.78f, 0.2f), 0.5f);
 
-        StartCoroutine(ProjectileRoutine(from, to, color, fever ? 0.13f : 0.1f, fever ? 0.22f : 0.18f));
+        float duration = fever ? 0.13f : 0.1f;
+        float scale = fever ? 0.22f : 0.18f;
+        StartCoroutine(ProjectileRoutine(from, to, color, duration, scale, target, damage));
         towerTransform?.GetComponent<TowerFireRecoil>()?.Punch();
         SimpleAudio.Instance?.PlayTowerFire(fever);
     }
@@ -59,9 +62,8 @@ public class CombatVfxService : MonoBehaviour
         if (fever)
             color = Color.Lerp(color, new Color(1f, 0.55f, 0.12f), 0.45f);
 
-        int particleCount = fever ? (amount >= 6f ? 14 : 10) : 10;
-        float particleSpeed = fever ? 0.55f : 0.45f;
-        SpawnHitParticles(pos, color, particleCount, particleSpeed);
+        int particleCount = fever ? 5 : 4;
+        SpawnBulletImpactParticles(pos, color, particleCount);
         SpawnDamagePopup(pos, amount, fever);
         ScreenShake.Instance?.Shake(
             fever ? (amount >= 8f ? 0.14f : 0.08f) : (amount >= 8f ? 0.12f : 0.05f),
@@ -115,9 +117,10 @@ public class CombatVfxService : MonoBehaviour
             PlayGoldFlyToCore(towers, corePos, goldReward);
     }
 
-    public void PlayRhythmSalvoShot(Vector3 from, Vector3 to, float damage, Transform towerTransform)
+    public void PlayRhythmSalvoShot(Vector3 from, Vector3 to, float damage, Transform towerTransform,
+        EnemyHealth target = null)
     {
-        StartCoroutine(RhythmSalvoProjectileRoutine(from, to, RhythmSalvoColor));
+        StartCoroutine(RhythmSalvoProjectileRoutine(from, to, RhythmSalvoColor, target, damage));
         towerTransform?.GetComponent<TowerFireRecoil>()?.Punch();
         SimpleAudio.Instance?.PlayTowerFire();
     }
@@ -243,7 +246,7 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    IEnumerator RhythmSalvoProjectileRoutine(Vector3 from, Vector3 to, Color color)
+    IEnumerator RhythmSalvoProjectileRoutine(Vector3 from, Vector3 to, Color color, EnemyHealth target, float damage)
     {
         var go = new GameObject("RhythmSalvoShot");
         go.transform.SetParent(_poolRoot);
@@ -265,7 +268,7 @@ public class CombatVfxService : MonoBehaviour
             yield return null;
         }
 
-        SpawnHitParticles(to, color, 8, 0.42f);
+        ApplyProjectileImpact(target, damage);
         Destroy(go);
     }
 
@@ -399,7 +402,14 @@ public class CombatVfxService : MonoBehaviour
         Destroy(go);
     }
 
-    IEnumerator ProjectileRoutine(Vector3 from, Vector3 to, Color color, float duration, float projectileScale)
+    IEnumerator ProjectileRoutine(
+        Vector3 from,
+        Vector3 to,
+        Color color,
+        float duration,
+        float projectileScale,
+        EnemyHealth target,
+        float damage)
     {
         var go = new GameObject("Projectile");
         go.transform.SetParent(_poolRoot);
@@ -419,7 +429,77 @@ public class CombatVfxService : MonoBehaviour
             yield return null;
         }
 
-        SpawnHitParticles(to, color, 6, 0.35f);
+        ApplyProjectileImpact(target, damage);
+        Destroy(go);
+    }
+
+    void ApplyProjectileImpact(EnemyHealth target, float damage)
+    {
+        if (target != null && target.IsAlive && damage > 0f)
+            target.TakeDamage(damage);
+    }
+
+    void SpawnBulletImpactParticles(Vector3 pos, Color color, int count = 4)
+    {
+        var sparkColor = Color.Lerp(color, Color.white, 0.5f);
+        for (int i = 0; i < count; i++)
+        {
+            var go = new GameObject("BulletImpact");
+            go.transform.SetParent(_poolRoot);
+            go.transform.position = pos + (Vector3)(Random.insideUnitCircle * 0.04f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = Random.value > 0.35f ? GreyboxSprites.Circle : GreyboxSprites.Square;
+            sr.color = sparkColor;
+            sr.sortingOrder = 23;
+            go.transform.localScale = Vector3.one * Random.Range(0.03f, 0.055f);
+            Vector2 vel = Random.insideUnitCircle.normalized * Random.Range(0.16f, 0.3f);
+            StartCoroutine(BulletImpactParticleRoutine(go, sr, vel));
+        }
+
+        StartCoroutine(MicroImpactRingRoutine(pos, new Color(sparkColor.r, sparkColor.g, sparkColor.b, 0.55f)));
+    }
+
+    IEnumerator BulletImpactParticleRoutine(GameObject go, SpriteRenderer sr, Vector2 velocity)
+    {
+        float life = Random.Range(0.1f, 0.16f);
+        float elapsed = 0f;
+        Color start = sr.color;
+        Vector3 startScale = go.transform.localScale;
+        while (elapsed < life)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / life;
+            go.transform.position += (Vector3)(velocity * Time.deltaTime);
+            velocity *= 0.9f;
+            go.transform.localScale = startScale * (1f - t * 0.4f);
+            sr.color = new Color(start.r, start.g, start.b, start.a * (1f - t));
+            yield return null;
+        }
+
+        Destroy(go);
+    }
+
+    IEnumerator MicroImpactRingRoutine(Vector3 center, Color color)
+    {
+        var go = new GameObject("BulletImpactRing");
+        go.transform.SetParent(_poolRoot);
+        go.transform.position = center;
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = GreyboxSprites.Ring;
+        sr.color = color;
+        sr.sortingOrder = 22;
+
+        const float duration = 0.11f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            go.transform.localScale = Vector3.one * Mathf.Lerp(0.08f, 0.34f, t);
+            sr.color = new Color(color.r, color.g, color.b, color.a * (1f - t));
+            yield return null;
+        }
+
         Destroy(go);
     }
 
