@@ -81,7 +81,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 1687773583878432027, guid: 99bccbb09c08a864da72942c5b0cd796, type: 3}
+  m_Sprite: {fileID: 1687773583878432027, guid: c4a0a822a91845efb087d3d0dce83925, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.22}
   m_FlipX: 0
   m_FlipY: 0
@@ -180,7 +180,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -7331960727541536983, guid: 187727564c809a94fa10f18d5f21e9fd, type: 3}
+  m_Sprite: {fileID: -7331960727541536983, guid: dbbd0cbb5f534f6fa13b8629ad8cb2c8, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -254,6 +254,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::BeatTower
   level: 1
+  spriteLevel1: {fileID: -7331960727541536983, guid: dbbd0cbb5f534f6fa13b8629ad8cb2c8, type: 3}
+  spriteLevel2: {fileID: -856918673377590900, guid: d346b7a3ef1f42c19e224294ab8c3ddd, type: 3}
+  spriteLevel3: {fileID: -5651382019551048028, guid: 4719412e76504793b413b4d6ce2f57f7, type: 3}
 --- !u!114 &5699716991907206774
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -291,3 +294,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: BeatDefender::TowerRangeVisualizer
   alpha: 0.22
+  rangeRingSprite: {fileID: 1687773583878432027, guid: c4a0a822a91845efb087d3d0dce83925, type: 3}

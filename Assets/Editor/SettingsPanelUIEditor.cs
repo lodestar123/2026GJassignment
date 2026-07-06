@@ -46,6 +46,13 @@ public static class SettingsPanelUIEditor
         if (pauseRoot == null)
             return false;
 
+        var settingsUi = pauseRoot.GetComponent<SettingsPanelUI>();
+        if (settingsUi != null && settingsUi.PanelRoot != null)
+        {
+            Debug.Log("Beat Defender: GameScene 설정 패널은 씬 오브젝트로 유지됩니다. Hierarchy에서 직접 수정하세요.");
+            return true;
+        }
+
         Undo.RegisterFullObjectHierarchyUndo(pauseRoot.gameObject, "Rebuild Settings Panel");
         SettingsPanelVisualBuilder.Build(pauseRoot, new SettingsPanelVisualBuilder.BuildOptions
         {

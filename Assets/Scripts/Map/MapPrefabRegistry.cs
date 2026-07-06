@@ -75,45 +75,24 @@ public class MapPrefabRegistry : ScriptableObject
     public Sprite CoreSprite => coreSprite;
     public Sprite RangeRingSprite => rangeRingSprite;
 
-    public GameObject GetTowerPrefab(TowerType type) => type switch
+    public GameObject GetTowerPrefab(TowerType type)
     {
-        TowerType.Beat => beatTower,
-        _ => null
-    };
+        var prefab = type switch
+        {
+            TowerType.Beat => beatTower,
+            _ => null
+        };
 
-    public Sprite GetTowerLevelSprite(int level) => level switch
-    {
-        1 => towerLevel1,
-        2 => towerLevel2,
-        >= 3 => towerLevel3 != null ? towerLevel3 : towerLevel2,
-        _ => towerLevel1
-    };
+        if (prefab != null)
+            return prefab;
 
-    /// <summary>Registry 슬롯 → BeatTower 프리팹 body → null.</summary>
-    public Sprite ResolveTowerLevelSprite(int level)
-    {
-        var sprite = GetTowerLevelSprite(level);
-        if (sprite != null)
-            return sprite;
-
-        if (beatTower == null)
-            return null;
-
-        return beatTower.GetComponent<SpriteRenderer>()?.sprite;
+        return type == TowerType.Beat
+            ? Resources.Load<GameObject>("BeatDefender/BeatTower")
+            : null;
     }
 
-    /// <summary>Registry rangeRingSprite → BeatTower/RangeRing → null.</summary>
-    public Sprite ResolveRangeRingSprite()
-    {
-        if (rangeRingSprite != null)
-            return rangeRingSprite;
-
-        if (beatTower == null)
-            return null;
-
-        var ring = beatTower.transform.Find("RangeRing")?.GetComponent<SpriteRenderer>();
-        return ring != null ? ring.sprite : null;
-    }
+    public static bool IsUsableSprite(Sprite sprite) =>
+        sprite != null && sprite.texture != null;
 
     public void SetPrefabs(
         GameObject beatTowerPrefab,

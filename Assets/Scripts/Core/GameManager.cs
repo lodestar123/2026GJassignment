@@ -8,12 +8,12 @@ using UnityEngine;
 [DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
-    public const float DefaultMatchDurationSeconds = 120f;
+    public const float DefaultMatchDurationSeconds = 90f;
     public const float SpawnGraceSeconds = 3f;
 
     public static GameManager Instance { get; private set; }
 
-    [Tooltip("매치 길이(초). 클리어 테스트 시 10 등으로 줄이세요. 빌드 전 120 권장.")]
+    [Tooltip("매치 길이(초). 기본 90(1분 30초). 클리어 테스트 시 10 등으로 줄일 수 있음.")]
     [SerializeField] float matchDurationSeconds = DefaultMatchDurationSeconds;
 
     public static float MatchDurationSeconds =>

@@ -281,7 +281,7 @@ public static class StartSceneVisualBuilder
 
         EnsureText(root, "Subtitle", "리듬 타워 디펜스", 26f, new Vector2(0f, -48f), new Vector2(640f, 40f),
             new Color(0.82f, 0.84f, 0.9f, 0.92f));
-        EnsureText(root, "Tagline", "Space로 박자 체험, 마우스로 타워, 2분간 코어를 지켜라", 18f, new Vector2(0f, -82f), new Vector2(720f, 32f),
+        EnsureText(root, "Tagline", "Space로 박자 체험, 마우스로 타워, 1분 30초간 코어를 지켜라", 18f, new Vector2(0f, -82f), new Vector2(720f, 32f),
             new Color(0.55f, 0.6f, 0.72f, 0.85f));
     }
 

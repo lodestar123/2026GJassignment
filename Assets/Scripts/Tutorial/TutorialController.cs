@@ -14,7 +14,7 @@ public class TutorialController : MonoBehaviour
             "<b>Beat Defender</b>",
             "120 BPM 박자에 맞춰 <b>왼손</b>으로 리듬 패턴을 입력하고, "
             + "<b>오른손</b>으로 타워를 배치해 Core를 지키는 탑뷰 디펜스입니다.\n\n"
-            + "목표: <b>2분(120초) 생존</b>. Core HP가 0이 되면 패배합니다.",
+            + "목표: <b>1분 30초(90초) 생존</b>. Core HP가 0이 되면 패배합니다.",
             TutorialAdvanceMode.Manual),
 
         new(

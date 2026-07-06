@@ -5,6 +5,11 @@ public class BeatTower : MonoBehaviour
 {
     [SerializeField] int level = 1;
 
+    [Header("타워 이미지 (BeatTower 프리팹 Inspector)")]
+    [SerializeField] Sprite spriteLevel1;
+    [SerializeField] Sprite spriteLevel2;
+    [SerializeField] Sprite spriteLevel3;
+
     Tower _tower;
     int _upgradeGoldSpent;
     bool _subscribed;
@@ -23,15 +28,11 @@ public class BeatTower : MonoBehaviour
         level = Mathf.Clamp(level, 1, BeatTowerUpgrade.MaxLevel);
         TowerRegistry.Instance?.Register(this);
         TowerRegistry.Instance?.RegisterTower(_tower);
-        RefreshFromRegistry();
+        ApplyLevelVisual();
     }
 
     void OnEnable() => TrySubscribe();
-    void Start()
-    {
-        TrySubscribe();
-        RefreshFromRegistry();
-    }
+    void Start() => TrySubscribe();
 
     void OnDestroy()
     {
@@ -68,7 +69,7 @@ public class BeatTower : MonoBehaviour
         int cost = NextUpgradeCost;
         _upgradeGoldSpent += cost;
         level++;
-        RefreshFromRegistry();
+        ApplyLevelVisual();
         return true;
     }
 
@@ -79,6 +80,13 @@ public class BeatTower : MonoBehaviour
 
     public void RefreshFromRegistry() => ApplyLevelVisual();
 
+    public void SetLevelSprites(Sprite level1, Sprite level2, Sprite level3)
+    {
+        spriteLevel1 = level1;
+        spriteLevel2 = level2;
+        spriteLevel3 = level3;
+    }
+
     void ApplyLevelVisual()
     {
         float scale = Tower.BaseVisualScale + (level - 1) * 0.06f;
@@ -86,22 +94,30 @@ public class BeatTower : MonoBehaviour
 
         var sr = GetComponent<SpriteRenderer>();
         if (sr == null)
-            sr = gameObject.AddComponent<SpriteRenderer>();
+            return;
 
-        var registry = MapPrefabRegistry.Get();
-        var sprite = registry != null
-            ? registry.ResolveTowerLevelSprite(level)
-            : null;
+        var sprite = ResolveSpriteForLevel(level);
+        if (sprite != null)
+            sr.sprite = sprite;
 
-        if (sprite == null)
-            sprite = GreyboxSprites.Tower;
-
-        sr.sprite = sprite;
         sr.color = Color.white;
         if (sr.sortingOrder < 10)
             sr.sortingOrder = 10;
 
-        GetComponent<TowerRangeVisualizer>()?.RefreshFromRegistry();
+        SpriteRendererUtility.EnsureSpriteMaterial(sr);
+        GetComponent<TowerFireRecoil>()?.SyncBaseScale();
+        GetComponent<TowerRangeVisualizer>()?.RefreshRingScale();
+    }
+
+    Sprite ResolveSpriteForLevel(int lv)
+    {
+        return lv switch
+        {
+            1 => spriteLevel1,
+            2 => spriteLevel2 != null ? spriteLevel2 : spriteLevel1,
+            >= 3 => spriteLevel3 != null ? spriteLevel3 : (spriteLevel2 != null ? spriteLevel2 : spriteLevel1),
+            _ => spriteLevel1
+        };
     }
 
     void OnBeat()
@@ -134,7 +150,6 @@ public class BeatTower : MonoBehaviour
         return true;
     }
 
-    /// <summary>Perfect 리듬 — 범위 밖이어도 연출, 적 있으면 데미지.</summary>
     public bool FireRhythmPerfectSalvo(float damageOverride = -1f)
     {
         float damage = damageOverride >= 0f ? damageOverride : ActiveDamage;

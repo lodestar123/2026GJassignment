@@ -2,15 +2,23 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 2분 매치 마일스톤 — UI 알림 + Last Stand 구간 스폰 가속.
-/// 60s·90s 엘리트 스폰은 EliteSpawnDirector가 담당.
+/// 매치 마일스톤 — UI 알림 + Last Stand 구간 스폰 가속.
+/// 시각은 120초 기준 설계를 MatchDurationSeconds에 비례해 스케일.
 /// </summary>
 public class MatchMilestoneDirector : MonoBehaviour
 {
-    public const float PressureRisingSeconds = 30f;
+    const float ReferenceMatchSeconds = 120f;
+
+    public static float PressureRisingSeconds =>
+        GameManager.MatchDurationSeconds * (30f / ReferenceMatchSeconds);
+
     public const float EliteWarningLeadSeconds = 3f;
-    public const float LastStandSeconds = 100f;
-    public const float FinalPushSeconds = 110f;
+
+    public static float LastStandSeconds =>
+        GameManager.MatchDurationSeconds * (100f / ReferenceMatchSeconds);
+
+    public static float FinalPushSeconds =>
+        GameManager.MatchDurationSeconds * (110f / ReferenceMatchSeconds);
 
     public const float LastStandSpawnScale = 0.65f;
     public const float FinalPushSpawnScale = 0.45f;

@@ -1,12 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// 타워 사거리 링 — MapPrefabRegistry.RangeRingSprite, 스프라이트 bounds 기준으로 range에 맞춤.
+/// 타워 사거리 링 — BeatTower 프리팹 Inspector의 rangeRingSprite / RangeRing 자식 사용.
 /// </summary>
 [RequireComponent(typeof(Tower))]
+[DefaultExecutionOrder(100)]
 public class TowerRangeVisualizer : MonoBehaviour
 {
     [SerializeField] float alpha = 0.22f;
+    [SerializeField] Sprite rangeRingSprite;
 
     Tower _tower;
     SpriteRenderer _ring;
@@ -15,11 +17,10 @@ public class TowerRangeVisualizer : MonoBehaviour
     {
         _tower = GetComponent<Tower>();
         CreateRing();
+        ApplyRingSprite();
     }
 
-    void Start() => RefreshFromRegistry();
-
-    void OnEnable() => RefreshFromRegistry();
+    void Start() => RefreshRingScale();
 
 #if UNITY_EDITOR
     void OnValidate()
@@ -27,18 +28,15 @@ public class TowerRangeVisualizer : MonoBehaviour
         if (_tower == null)
             _tower = GetComponent<Tower>();
 
-        // OnValidate/임포트 중 AssetDatabase 로드 금지 — scale만 갱신
         CreateRing();
-        Refresh();
+        ApplyRingSprite();
+        RefreshRingScale();
     }
 #endif
 
-    public void RefreshFromRegistry()
-    {
-        CreateRing();
-        ApplyRingSprite();
-        Refresh();
-    }
+    public void SetRangeRingSprite(Sprite sprite) => rangeRingSprite = sprite;
+
+    public void RefreshRingScale() => Refresh();
 
     void CreateRing()
     {
@@ -65,9 +63,10 @@ public class TowerRangeVisualizer : MonoBehaviour
         if (_ring == null)
             return;
 
-        var registry = MapPrefabRegistry.Get();
-        var sprite = registry != null ? registry.ResolveRangeRingSprite() : null;
-        _ring.sprite = sprite != null ? sprite : GreyboxSprites.Ring;
+        if (rangeRingSprite != null)
+            _ring.sprite = rangeRingSprite;
+
+        SpriteRendererUtility.EnsureSpriteMaterial(_ring);
     }
 
     void Refresh()

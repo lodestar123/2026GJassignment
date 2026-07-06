@@ -10,10 +10,11 @@ public class TowerFireRecoil : MonoBehaviour
     const float DecaySpeed = 14f;
 
     float _pulse;
+    float _baseScale = DefaultScale;
 
     void Awake()
     {
-        ApplyScale(0f);
+        _baseScale = transform.localScale.x > 0.01f ? transform.localScale.x : DefaultScale;
     }
 
     void Update()
@@ -33,7 +34,12 @@ public class TowerFireRecoil : MonoBehaviour
 
     void ApplyScale(float pulse)
     {
-        float s = DefaultScale * (1f + pulse * PunchAmount);
+        float s = _baseScale * (1f + pulse * PunchAmount);
         transform.localScale = new Vector3(s, s, 1f);
+    }
+
+    public void SyncBaseScale()
+    {
+        _baseScale = transform.localScale.x > 0.01f ? transform.localScale.x : DefaultScale;
     }
 }

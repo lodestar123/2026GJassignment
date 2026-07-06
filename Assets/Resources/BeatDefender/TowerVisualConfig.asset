@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8e7f6a5d4c342b1a090807060504030, type: 3}
+  m_Name: TowerVisualConfig
+  m_EditorClassIdentifier: BeatDefender::TowerVisualConfig
+  towerLevel1: {fileID: -7331960727541536983, guid: dbbd0cbb5f534f6fa13b8629ad8cb2c8, type: 3}
+  towerLevel2: {fileID: -856918673377590900, guid: d346b7a3ef1f42c19e224294ab8c3ddd, type: 3}
+  towerLevel3: {fileID: -5651382019551048028, guid: 4719412e76504793b413b4d6ce2f57f7, type: 3}
+  rangeRing: {fileID: 1687773583878432027, guid: c4a0a822a91845efb087d3d0dce83925, type: 3}

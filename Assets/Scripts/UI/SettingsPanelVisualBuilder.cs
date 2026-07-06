@@ -70,7 +70,17 @@ public static class SettingsPanelVisualBuilder
 
     static void DestroyExistingPanel(RectTransform uiRoot)
     {
-        var existingPanel = uiRoot.Find("SettingsPanel");
+        Transform existingPanel = null;
+        for (int i = 0; i < uiRoot.childCount; i++)
+        {
+            var child = uiRoot.GetChild(i);
+            if (child.name == "SettingsPanel")
+            {
+                existingPanel = child;
+                break;
+            }
+        }
+
         if (existingPanel == null)
             return;
 

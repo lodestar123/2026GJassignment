@@ -183,6 +183,7 @@ public class TowerPlacer : MonoBehaviour
         var parent = towerRoot != null ? towerRoot : transform;
         var registry = MapPrefabRegistry.Get();
         var prefab = registry != null ? registry.GetTowerPrefab(TowerType.Beat) : null;
+        prefab ??= Resources.Load<GameObject>("BeatDefender/BeatTower");
 
         GameObject go;
         if (prefab != null)
@@ -193,7 +194,6 @@ public class TowerPlacer : MonoBehaviour
         else
             go = CreateFallbackTower(worldPosition, parent);
 
-        go.GetComponent<BeatTower>()?.RefreshFromRegistry();
         return go.GetComponent<Tower>();
     }
 

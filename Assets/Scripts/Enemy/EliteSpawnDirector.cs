@@ -2,12 +2,17 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 60s · 90s 엘리트 웨이브 — 양쪽 동시 1마리씩.
+/// 엘리트 웨이브 — 양쪽 동시 1마리씩. 시각은 120초 기준을 매치 길이에 비례 스케일.
 /// </summary>
 public class EliteSpawnDirector : MonoBehaviour
 {
-    public const float Wave60Seconds = 60f;
-    public const float Wave90Seconds = 90f;
+    const float ReferenceMatchSeconds = 120f;
+
+    public static float Wave60Seconds =>
+        GameManager.MatchDurationSeconds * (60f / ReferenceMatchSeconds);
+
+    public static float Wave90Seconds =>
+        GameManager.MatchDurationSeconds * (90f / ReferenceMatchSeconds);
 
     public static event Action<EliteTier> OnWaveStarted;
 

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 2분 스폰 — BALANCE §7.1 · 필드 max · 시작 3s delay · 구간별 급변 대신 smooth ramp.
+/// 매치 스폰 — BALANCE §7.1 · 필드 max · 시작 3s delay · smooth ramp.
 /// </summary>
 public class ContinuousSpawner : MonoBehaviour
 {

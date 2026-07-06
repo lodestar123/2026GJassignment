@@ -12,7 +12,7 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public static class MapPrefabBuilder
 {
-    const string TowerFolder = "Assets/Prefabs/Towers";
+    const string TowerPrefabPath = "Assets/Resources/BeatDefender/BeatTower.prefab";
     const string MapFolder = "Assets/Prefabs/Map";
     const string RegistryPath = "Assets/Resources/BeatDefender/MapPrefabRegistry.asset";
     const string GameScenePath = "Assets/Scenes/GameScene.unity";
@@ -134,9 +134,12 @@ public static class MapPrefabBuilder
 
     public static bool BuildAll()
     {
-        EnsureFolder(TowerFolder);
+        EnsureFolder(Path.GetDirectoryName(TowerPrefabPath));
+        EnsureFolder("Assets/Resources/BeatDefender/Sprites");
         EnsureFolder(MapFolder);
         EnsureFolder(Path.GetDirectoryName(RegistryPath));
+
+        SyncTowerSpritesToResources();
 
         var towerLv1 = LoadSprite(TowerLv1Path) ?? GreyboxSprites.Square;
         var towerLv2 = LoadSprite(TowerLv2Path) ?? towerLv1;
@@ -150,7 +153,7 @@ public static class MapPrefabBuilder
         var waypointSprite = LoadSprite(CircleSpritePath) ?? GreyboxSprites.Circle;
         var spawnSprite = LoadSprite(SpawnPortalPath) ?? waypointSprite;
 
-        var beatTower = CreateBeatTowerPrefab(towerLv1, ringSprite);
+        var beatTower = CreateBeatTowerPrefab(towerLv1, towerLv2, towerLv3, ringSprite);
         var placementCell = CreatePlacementCellPrefab(placementEmpty);
         var core = CreateCorePrefab(coreSprite);
         var pathMarker = CreatePathWaypointPrefab(waypointSprite);
@@ -159,14 +162,16 @@ public static class MapPrefabBuilder
         SaveRegistry(beatTower, placementCell, core, pathMarker, spawnMarker,
             placementEmpty, placementAvailable, towerLv1, towerLv2, towerLv3, coreSprite, ringSprite);
 
+        TowerVisualConfigEditor.EnsureConfigAsset();
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return beatTower != null && placementCell != null;
     }
 
-    static GameObject CreateBeatTowerPrefab(Sprite bodySprite, Sprite ringSprite)
+    static GameObject CreateBeatTowerPrefab(Sprite bodySprite, Sprite level2Sprite, Sprite level3Sprite, Sprite ringSprite)
     {
-        var path = $"{TowerFolder}/BeatTower.prefab";
+        var path = TowerPrefabPath;
         return SaveFreshPrefab(path, "BeatTower", go =>
         {
             var sr = go.AddComponent<SpriteRenderer>();
@@ -182,10 +187,12 @@ public static class MapPrefabBuilder
             var tower = go.AddComponent<Tower>();
             tower.towerType = TowerType.Beat;
 
-            go.AddComponent<BeatTower>();
+            var beat = go.AddComponent<BeatTower>();
+            beat.SetLevelSprites(bodySprite, level2Sprite, level3Sprite);
             go.AddComponent<TowerClickTarget>();
             go.AddComponent<TowerFireRecoil>();
-            go.AddComponent<TowerRangeVisualizer>();
+            var rangeViz = go.AddComponent<TowerRangeVisualizer>();
+            rangeViz.SetRangeRingSprite(ringSprite);
 
             var ringGo = new GameObject("RangeRing");
             ringGo.transform.SetParent(go.transform, false);
@@ -309,6 +316,27 @@ public static class MapPrefabBuilder
         registry.SetSprites(
             placementEmpty, placementAvailable, towerLv1, towerLv2, towerLv3, coreArt, ringArt);
         EditorUtility.SetDirty(registry);
+    }
+
+    public static void SyncTowerSpritesToResources()
+    {
+        CopyResourceSprite(TowerLv1Path, "Assets/Resources/BeatDefender/Sprites/Tower_Level1_1.png");
+        CopyResourceSprite(TowerLv2Path, "Assets/Resources/BeatDefender/Sprites/Tower_Level2.png");
+        CopyResourceSprite(TowerLv3Path, "Assets/Resources/BeatDefender/Sprites/Tower_Level3.png");
+        CopyResourceSprite(RangeRingSpritePath, "Assets/Resources/BeatDefender/Sprites/RangeIndicatorRing.png");
+    }
+
+    static void CopyResourceSprite(string sourcePath, string destPath)
+    {
+        if (!File.Exists(sourcePath))
+            return;
+
+        var destDir = Path.GetDirectoryName(destPath);
+        if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+            Directory.CreateDirectory(destDir);
+
+        File.Copy(sourcePath, destPath, true);
+        AssetDatabase.ImportAsset(destPath.Replace('\\', '/'), ImportAssetOptions.ForceUpdate);
     }
 
     static Sprite LoadSprite(string assetPath, string spriteName = null)

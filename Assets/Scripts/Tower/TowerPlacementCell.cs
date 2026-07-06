@@ -143,7 +143,7 @@ public class TowerPlacementCell : MonoBehaviour
             ? registry.PlacementTileAvailable ?? registry.PlacementTileEmpty
             : registry.PlacementTileEmpty ?? registry.PlacementTileAvailable;
 
-        if (sprite == null)
+        if (!MapPrefabRegistry.IsUsableSprite(sprite))
             return;
 
         _sprite.sprite = sprite;
