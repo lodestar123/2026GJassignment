@@ -2,15 +2,22 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 2분(120s) 매치 — 승리 우선 · 패배는 Core HP = 0.
+/// 매치 타이머 — 승리 우선 · 패배는 Core HP = 0.
+/// GameScene의 GameManager → Match Duration Seconds에서 길이 조정.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
+    public const float DefaultMatchDurationSeconds = 120f;
+    public const float SpawnGraceSeconds = 3f;
+
     public static GameManager Instance { get; private set; }
 
-    public const float MatchDurationSeconds = 120f;
-    public const float SpawnGraceSeconds = 3f;
+    [Tooltip("매치 길이(초). 클리어 테스트 시 10 등으로 줄이세요. 빌드 전 120 권장.")]
+    [SerializeField] float matchDurationSeconds = DefaultMatchDurationSeconds;
+
+    public static float MatchDurationSeconds =>
+        Instance != null ? Instance.matchDurationSeconds : DefaultMatchDurationSeconds;
 
     public float ElapsedSeconds { get; private set; }
     public float RemainingSeconds => Mathf.Max(0f, MatchDurationSeconds - ElapsedSeconds);
@@ -101,7 +108,7 @@ public class GameManager : MonoBehaviour
         IsVictory = true;
         OnVictory?.Invoke();
         ResultScreenUI.Resolve()?.DisplayVictory();
-        Debug.Log("[GameManager] Victory — 120s survive!");
+        Debug.Log($"[GameManager] Victory — {MatchDurationSeconds:0}s survive!");
     }
 
     void EndDefeat()

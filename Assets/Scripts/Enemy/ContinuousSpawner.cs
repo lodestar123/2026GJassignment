@@ -6,7 +6,7 @@ using UnityEngine;
 /// </summary>
 public class ContinuousSpawner : MonoBehaviour
 {
-    public const int FieldCap = 85;
+    public const int FieldCap = 78;
 
     [SerializeField] Transform enemyRoot;
     [SerializeField] EnemyPrefabRegistry prefabRegistry;
@@ -273,11 +273,11 @@ public class ContinuousSpawner : MonoBehaviour
         float t = Mathf.Clamp01(spawnTime / GameManager.MatchDurationSeconds);
         float ramp = SmoothStep(t);
 
-        float interval = Mathf.Lerp(1.75f, 0.55f, ramp);
+        float interval = Mathf.Lerp(1.9f, 0.62f, ramp);
         float downbeatChance = Mathf.Lerp(0.05f, 0.35f, ramp);
-        float simultaneousChance = SmoothStep(Mathf.InverseLerp(0.25f, 0.8f, t));
+        float simultaneousChance = SmoothStep(Mathf.InverseLerp(0.28f, 0.82f, t));
         bool simultaneous = Random.value < simultaneousChance;
-        float countRamp = SmoothStep(Mathf.InverseLerp(0.6f, 0.95f, t));
+        float countRamp = SmoothStep(Mathf.InverseLerp(0.68f, 0.97f, t));
         int countPerSide = Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(1f, 2f, countRamp)), 1, 2);
 
         return new SpawnPhase(interval, downbeatChance, simultaneous, countPerSide);

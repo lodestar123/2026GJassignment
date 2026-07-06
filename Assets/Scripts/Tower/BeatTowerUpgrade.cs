@@ -21,8 +21,8 @@ public static class BeatTowerUpgrade
 
     public static int GetUpgradeCost(int currentLevel) => currentLevel switch
     {
-        1 => 15,
-        2 => 25,
+        1 => 30,
+        2 => 50,
         _ => 0
     };
 

@@ -6,8 +6,8 @@ public class SkillCooldownController : MonoBehaviour
 {
     public static SkillCooldownController Instance { get; private set; }
 
-    public const float OverloadStrikeCooldown = 10f;
-    public const float ChainZapCooldown = 18f;
+    public const float OverloadStrikeCooldown = 4f;
+    public const float ChainZapCooldown = 8f;
 
     readonly Dictionary<CommandType, float> _readyAt = new();
 

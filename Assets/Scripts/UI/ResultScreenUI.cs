@@ -88,6 +88,7 @@ public class ResultScreenUI : MonoBehaviour
                 panel,
                 "RhythmHighlight",
                 new Vector2(0.5f, 0.54f),
+                Vector2.zero,
                 new Vector2(900f, 72f),
                 52f,
                 FontStyles.Bold,
@@ -95,32 +96,13 @@ public class ResultScreenUI : MonoBehaviour
         }
 
         metaText ??= panel.Find("Meta")?.GetComponent<TextMeshProUGUI>();
-        if (metaText == null)
-        {
-            metaText = CreatePanelText(
-                panel,
-                "Meta",
-                new Vector2(0.5f, 0.41f),
-                new Vector2(900f, 56f),
-                22f,
-                FontStyles.Normal,
-                TextAlignmentOptions.Center);
-            metaText.color = new Color(0.82f, 0.82f, 0.88f, 1f);
-        }
-
-        if (detailText != null)
-        {
-            var detailRt = detailText.rectTransform;
-            detailRt.anchorMin = new Vector2(0.5f, 0.28f);
-            detailRt.anchorMax = new Vector2(0.5f, 0.28f);
-            detailRt.sizeDelta = new Vector2(900f, 160f);
-        }
     }
 
     static TextMeshProUGUI CreatePanelText(
         Transform panel,
         string name,
         Vector2 anchor,
+        Vector2 anchoredPosition,
         Vector2 size,
         float fontSize,
         FontStyles style,
@@ -133,7 +115,7 @@ public class ResultScreenUI : MonoBehaviour
         rt.anchorMax = anchor;
         rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = size;
-        rt.anchoredPosition = Vector2.zero;
+        rt.anchoredPosition = anchoredPosition;
 
         var tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
