@@ -40,10 +40,9 @@ public static class StartSceneEditor
         {
             UpgradeBeatRailIfNeeded(menu.transform as RectTransform);
             UpgradeSyncSliderIfNeeded(menu.transform as RectTransform);
+            UpgradeSettingsIfNeeded(menu.transform as RectTransform);
             EnsureRhythmStack(menu);
-            var scene = menu.gameObject.scene;
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            EditorSceneManager.MarkSceneDirty(menu.gameObject.scene);
             return;
         }
 
@@ -86,6 +85,7 @@ public static class StartSceneEditor
         presentation.EnsureSceneHierarchy(bakeSprite);
 
         EnsureRhythmStack(menu);
+        UpgradeSettingsIfNeeded(menu.transform as RectTransform);
 
         var cam = Camera.main;
         if (cam != null)
@@ -163,6 +163,25 @@ public static class StartSceneEditor
         var timelineSo = new SerializedObject(timeline);
         timelineSo.FindProperty("applyScriptLayoutOnAwake").boolValue = false;
         timelineSo.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static void UpgradeSettingsIfNeeded(RectTransform root)
+    {
+        if (root == null)
+            return;
+
+        StartSceneVisualBuilder.EnsureSettingsButton(root);
+
+        var settings = root.GetComponent<SettingsPanelUI>();
+        if (settings != null && settings.PanelRoot != null
+            && settings.PanelRoot.transform.Find("BgmSlider") != null)
+            return;
+
+        SettingsPanelVisualBuilder.Build(root, new SettingsPanelVisualBuilder.BuildOptions
+        {
+            ShowInputOffset = false,
+            CloseReturnsToPauseMenu = false
+        });
     }
 }
 #endif

@@ -24,7 +24,7 @@ public static class StartSceneVisualBuilder
         if (root == null)
             return null;
 
-        foreach (var name in new[] { "Btn_Start", "Btn_Tutorial", "Btn_Practice", "Btn_Quit" })
+        foreach (var name in new[] { "Btn_Start", "Btn_Tutorial", "Btn_Settings", "Btn_Practice", "Btn_Quit" })
         {
             var sprite = root.Find(name)?.GetComponent<Image>()?.sprite;
             if (sprite != null)
@@ -304,22 +304,76 @@ public static class StartSceneVisualBuilder
 
     static void StyleButtons(RectTransform root)
     {
-        StyleButton(root, "Btn_Start", Gold, "게임 시작", 20f);
-        StyleButton(root, "Btn_Tutorial", Cyan, "튜토리얼", -58f);
-        // 레거시 씬 호환
-        StyleButton(root, "Btn_Practice", Cyan, "튜토리얼", -58f);
-        StyleButton(root, "Btn_Quit", new Color(0.45f, 0.48f, 0.55f), "종료", -136f);
+        EnsureMenuButton(root, "Btn_Start");
+        EnsureMenuButton(root, "Btn_Tutorial");
+        EnsureMenuButton(root, "Btn_Settings");
+        EnsureMenuButton(root, "Btn_Quit");
+
+        StyleButton(root, "Btn_Start", Gold, "게임 시작", 20f, applyLayout: true);
+        StyleButton(root, "Btn_Tutorial", Cyan, "튜토리얼", -58f, applyLayout: true);
+        StyleButton(root, "Btn_Practice", Cyan, "튜토리얼", -58f, applyLayout: true);
+        StyleButton(root, "Btn_Settings", Purple, "설정", -97f, applyLayout: true);
+        StyleButton(root, "Btn_Quit", new Color(0.45f, 0.48f, 0.55f), "종료", -136f, applyLayout: true);
     }
 
-    static void StyleButton(RectTransform root, string name, Color accent, string label, float y)
+    public static void EnsureSettingsButton(RectTransform root)
+    {
+        if (root == null)
+            return;
+
+        bool created = EnsureMenuButton(root, "Btn_Settings");
+        StyleButton(root, "Btn_Settings", Purple, "설정", -97f, applyLayout: created);
+    }
+
+    static bool EnsureMenuButton(RectTransform root, string name)
+    {
+        if (root.Find(name) != null)
+            return false;
+
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(CanvasGroup));
+        go.transform.SetParent(root, false);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(340f, 58f);
+
+        var img = go.GetComponent<Image>();
+        img.sprite = UiSprite;
+        img.color = new Color(0.09f, 0.11f, 0.16f, 0.94f);
+        img.raycastTarget = true;
+
+        var accentGo = CreateImage(go.transform, "Accent");
+        ApplyAccentBar(accentGo.rectTransform, Color.white);
+
+        var label = CreateText(go.transform, "Label", name, 24f);
+        StretchFull(label.rectTransform);
+        label.alignment = TextAlignmentOptions.Center;
+        label.fontStyle = FontStyles.Bold;
+
+        var button = go.GetComponent<Button>();
+        button.targetGraphic = img;
+        return true;
+    }
+
+    static void StyleButton(
+        RectTransform root,
+        string name,
+        Color accent,
+        string label,
+        float defaultY,
+        bool applyLayout)
     {
         var buttonT = root.Find(name);
         if (buttonT == null)
             return;
 
         var rt = buttonT as RectTransform;
-        rt.sizeDelta = new Vector2(340f, 58f);
-        rt.anchoredPosition = new Vector2(0f, y);
+        if (applyLayout)
+        {
+            rt.sizeDelta = new Vector2(340f, 58f);
+            rt.anchoredPosition = new Vector2(0f, defaultY);
+        }
 
         var img = buttonT.GetComponent<Image>();
         if (img != null)
@@ -333,16 +387,9 @@ public static class StartSceneVisualBuilder
         {
             var accentGo = CreateImage(buttonT, "Accent");
             accentT = accentGo.rectTransform;
-            accentT.SetAsFirstSibling();
-            var barRt = accentT as RectTransform;
-            barRt.anchorMin = new Vector2(0f, 0f);
-            barRt.anchorMax = new Vector2(0f, 1f);
-            barRt.pivot = new Vector2(0f, 0.5f);
-            barRt.sizeDelta = new Vector2(6f, 0f);
-            barRt.anchoredPosition = Vector2.zero;
         }
 
-        accentT.GetComponent<Image>().color = accent;
+        ApplyAccentBar(accentT as RectTransform, accent);
 
         var labelText = buttonT.GetComponentInChildren<TextMeshProUGUI>();
         if (labelText != null)
@@ -365,6 +412,26 @@ public static class StartSceneVisualBuilder
         }
 
         EnsureCanvasGroup(rt);
+    }
+
+    static void ApplyAccentBar(RectTransform accentRt, Color accent)
+    {
+        if (accentRt == null)
+            return;
+
+        accentRt.SetAsFirstSibling();
+        accentRt.anchorMin = new Vector2(0f, 0f);
+        accentRt.anchorMax = new Vector2(0f, 1f);
+        accentRt.pivot = new Vector2(0f, 0.5f);
+        accentRt.sizeDelta = new Vector2(6f, 0f);
+        accentRt.anchoredPosition = Vector2.zero;
+
+        var accentImg = accentRt.GetComponent<Image>();
+        if (accentImg != null)
+        {
+            accentImg.raycastTarget = false;
+            accentImg.color = accent;
+        }
     }
 
     static CanvasGroup EnsureCanvasGroup(RectTransform rt)

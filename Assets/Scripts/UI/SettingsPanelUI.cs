@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Pause 설정 패널 — 입력 감도 · 메트로놈 · SFX 볼륨.
+/// 설정 패널 — 입력 감도(선택) · 효과음 · 배경음.
 /// </summary>
 public class SettingsPanelUI : MonoBehaviour
 {
@@ -12,12 +12,15 @@ public class SettingsPanelUI : MonoBehaviour
     [SerializeField] GameObject panelRoot;
     [SerializeField] Slider inputOffsetSlider;
     [SerializeField] TextMeshProUGUI inputOffsetLabel;
-    [SerializeField] Slider metronomeSlider;
     [SerializeField] Slider sfxSlider;
+    [SerializeField] Slider bgmSlider;
     [SerializeField] Button closeButton;
+    [SerializeField] bool showInputOffset = true;
+    [SerializeField] bool closeReturnsToPauseMenu = true;
 
     bool _initialized;
 
+    public GameObject PanelRoot => panelRoot;
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
     void Awake()
@@ -46,6 +49,34 @@ public class SettingsPanelUI : MonoBehaviour
         return Instance;
     }
 
+    public void Configure(
+        GameObject panel,
+        Slider inputSlider,
+        TextMeshProUGUI inputLabel,
+        Slider sfx,
+        Slider bgm,
+        Button close,
+        bool inputOffsetVisible,
+        bool returnsToPauseMenu)
+    {
+        _initialized = false;
+        panelRoot = panel;
+        inputOffsetSlider = inputSlider;
+        inputOffsetLabel = inputLabel;
+        sfxSlider = sfx;
+        bgmSlider = bgm;
+        closeButton = close;
+        showInputOffset = inputOffsetVisible;
+        closeReturnsToPauseMenu = returnsToPauseMenu;
+
+        if (inputOffsetLabel != null)
+            inputOffsetLabel.gameObject.SetActive(inputOffsetVisible);
+        if (inputOffsetSlider != null)
+            inputOffsetSlider.gameObject.SetActive(inputOffsetVisible);
+
+        EnsureInitialized();
+    }
+
     public void EnsureInitialized()
     {
         if (_initialized)
@@ -56,18 +87,18 @@ public class SettingsPanelUI : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.AddListener(Hide);
 
-        if (inputOffsetSlider != null)
+        if (showInputOffset && inputOffsetSlider != null)
         {
             inputOffsetSlider.minValue = RhythmInputSettings.MinInputOffsetAdjustment;
             inputOffsetSlider.maxValue = RhythmInputSettings.MaxInputOffsetAdjustment;
             inputOffsetSlider.onValueChanged.AddListener(OnInputOffsetChanged);
         }
 
-        if (metronomeSlider != null)
-            metronomeSlider.onValueChanged.AddListener(v => GameSettings.MetronomeVolume = v);
-
         if (sfxSlider != null)
             sfxSlider.onValueChanged.AddListener(v => GameSettings.SfxVolume = v);
+
+        if (bgmSlider != null)
+            bgmSlider.onValueChanged.AddListener(v => GameSettings.BgmVolume = v);
 
         RefreshFromData();
     }
@@ -83,7 +114,8 @@ public class SettingsPanelUI : MonoBehaviour
     public void Hide()
     {
         HidePanelOnly();
-        PauseMenuUI.Resolve()?.ShowButtonsOnly();
+        if (closeReturnsToPauseMenu)
+            PauseMenuUI.Resolve()?.ShowButtonsOnly();
     }
 
     public void HidePanelOnly()
@@ -94,18 +126,21 @@ public class SettingsPanelUI : MonoBehaviour
 
     void RefreshFromData()
     {
-        var settings = RhythmInputSettings.Instance;
-        if (settings != null && inputOffsetSlider != null)
+        if (showInputOffset)
         {
-            inputOffsetSlider.SetValueWithoutNotify(settings.InputOffsetAdjustment);
-            UpdateInputLabel(settings.InputOffsetAdjustment, settings.InputOffsetSeconds);
+            var settings = RhythmInputSettings.Instance;
+            if (settings != null && inputOffsetSlider != null)
+            {
+                inputOffsetSlider.SetValueWithoutNotify(settings.InputOffsetAdjustment);
+                UpdateInputLabel(settings.InputOffsetAdjustment, settings.InputOffsetSeconds);
+            }
         }
-
-        if (metronomeSlider != null)
-            metronomeSlider.SetValueWithoutNotify(GameSettings.MetronomeVolume);
 
         if (sfxSlider != null)
             sfxSlider.SetValueWithoutNotify(GameSettings.SfxVolume);
+
+        if (bgmSlider != null)
+            bgmSlider.SetValueWithoutNotify(GameSettings.BgmVolume);
     }
 
     void OnInputOffsetChanged(float adjustment)

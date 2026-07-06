@@ -112,21 +112,20 @@ public static class BeatDefenderVolumeSetupEditor
 
     static void EnsureGlobalVolume(Scene scene, VolumeProfile profile, int volumeLayer)
     {
-        Volume global = null;
+        var globals = new System.Collections.Generic.List<Volume>();
         foreach (var root in scene.GetRootGameObjects())
         {
             foreach (var volume in root.GetComponentsInChildren<Volume>(true))
             {
-                if (!volume.isGlobal)
-                    continue;
-
-                global = volume;
-                break;
+                if (volume.isGlobal)
+                    globals.Add(volume);
             }
-
-            if (global != null)
-                break;
         }
+
+        for (int i = 1; i < globals.Count; i++)
+            Undo.DestroyObjectImmediate(globals[i].gameObject);
+
+        Volume global = globals.Count > 0 ? globals[0] : null;
 
         GameObject go;
         if (global != null)
@@ -150,6 +149,13 @@ public static class BeatDefenderVolumeSetupEditor
         global.weight = 1f;
         global.sharedProfile = profile;
         EditorUtility.SetDirty(go);
+
+        if (Selection.activeObject is Volume selected
+            && selected != null
+            && selected.gameObject.scene == scene
+            && selected.isGlobal
+            && selected != global)
+            Selection.activeObject = global;
     }
 
     static void EnsureCameraPostProcessing(Camera camera, LayerMask volumeMask)

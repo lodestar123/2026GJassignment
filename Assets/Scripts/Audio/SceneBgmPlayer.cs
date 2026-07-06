@@ -39,6 +39,8 @@ public class SceneBgmPlayer : MonoBehaviour
         _source.spatialBlend = 0f;
         _source.priority = 128;
         ApplyClip();
+        GameSettings.ApplyTo(this);
+        GameSettings.OnBgmVolumeChanged += HandleBgmVolumeChanged;
         ApplyVolume();
     }
 
@@ -65,9 +67,14 @@ public class SceneBgmPlayer : MonoBehaviour
 
     void OnDestroy()
     {
+        GameSettings.OnBgmVolumeChanged -= HandleBgmVolumeChanged;
         UnsubscribePause();
         UnsubscribeTempo();
     }
+
+    public void RefreshVolumeFromSettings() => ApplyVolume();
+
+    void HandleBgmVolumeChanged(float _) => ApplyVolume();
 
     void OnValidate()
     {
@@ -119,7 +126,9 @@ public class SceneBgmPlayer : MonoBehaviour
             return;
 
         bool paused = duckOnPause && PauseController.Instance != null && PauseController.Instance.IsPaused;
-        _source.volume = paused ? volume * pauseVolumeMultiplier : volume;
+        float master = GameSettings.BgmVolume;
+        float duck = paused ? pauseVolumeMultiplier : 1f;
+        _source.volume = master * volume * duck;
     }
 
     void TrySubscribePause()

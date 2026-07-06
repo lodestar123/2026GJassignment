@@ -6,6 +6,7 @@ using UnityEngine;
 public static class GameSettings
 {
     public const string SfxVolumeKey = "BeatDefender.SfxVolume";
+    public const string BgmVolumeKey = "BeatDefender.BgmVolume";
     public const string MetronomeVolumeKey = "BeatDefender.MetronomeVolume";
 
     public static float SfxVolume
@@ -15,6 +16,16 @@ public static class GameSettings
         {
             PlayerPrefs.SetFloat(SfxVolumeKey, Mathf.Clamp01(value));
             OnSfxVolumeChanged?.Invoke(SfxVolume);
+        }
+    }
+
+    public static float BgmVolume
+    {
+        get => PlayerPrefs.GetFloat(BgmVolumeKey, 1f);
+        set
+        {
+            PlayerPrefs.SetFloat(BgmVolumeKey, Mathf.Clamp01(value));
+            OnBgmVolumeChanged?.Invoke(BgmVolume);
         }
     }
 
@@ -31,6 +42,7 @@ public static class GameSettings
     public static string ActiveGameSceneName => SceneNames.Game;
 
     public static event System.Action<float> OnSfxVolumeChanged;
+    public static event System.Action<float> OnBgmVolumeChanged;
     public static event System.Action<float> OnMetronomeVolumeChanged;
 
     public static void ApplyTo(SimpleAudio audio)
@@ -40,5 +52,10 @@ public static class GameSettings
 
         audio.sfxVolume = SfxVolume;
         audio.metronomeVolume = MetronomeVolume;
+    }
+
+    public static void ApplyTo(SceneBgmPlayer bgm)
+    {
+        bgm?.RefreshVolumeFromSettings();
     }
 }

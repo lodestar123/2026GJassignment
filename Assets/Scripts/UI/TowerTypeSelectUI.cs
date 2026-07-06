@@ -37,15 +37,26 @@ public class TowerTypeSelectUI : MonoBehaviour
         TowerSelection.OnChanged -= Refresh;
     }
 
+    void Start()
+    {
+        EnsureResources();
+        Refresh();
+    }
+
+    void EnsureResources()
+    {
+        _resources ??= ResourceManager.Instance ?? FindAnyObjectByType<ResourceManager>();
+        if (_resources == null)
+            return;
+
+        _resources.OnGoldChanged -= OnGoldChanged;
+        _resources.OnGoldChanged += OnGoldChanged;
+    }
+
     void OnEnable()
     {
         ResolveRefs();
-        if (_resources != null)
-        {
-            _resources.OnGoldChanged -= OnGoldChanged;
-            _resources.OnGoldChanged += OnGoldChanged;
-        }
-
+        EnsureResources();
         Refresh();
     }
 
@@ -88,11 +99,12 @@ public class TowerTypeSelectUI : MonoBehaviour
         if (towerButton == null)
             return;
 
+        EnsureResources();
+
         int gold = _resources != null ? _resources.Gold : 0;
         int cost = TowerPlacer.TowerCost;
         bool armed = TowerSelection.IsArmed;
         bool canAfford = gold >= cost;
-        bool interactable = canAfford || armed;
 
         if (towerButtonLabel != null)
         {
@@ -107,8 +119,8 @@ public class TowerTypeSelectUI : MonoBehaviour
         var control = towerButton.GetComponent<TowerTypeButton>();
         if (control != null)
         {
-            control.Interactable = interactable;
-            control.SetRaycast(interactable);
+            control.Interactable = true;
+            control.SetRaycast(true);
         }
     }
 }

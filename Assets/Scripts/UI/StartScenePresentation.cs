@@ -153,6 +153,7 @@ public class StartScenePresentation : MonoBehaviour
             root.Find("Btn_Start")?.GetComponent<CanvasGroup>(),
             root.Find("Btn_Tutorial")?.GetComponent<CanvasGroup>()
             ?? root.Find("Btn_Practice")?.GetComponent<CanvasGroup>(),
+            root.Find("Btn_Settings")?.GetComponent<CanvasGroup>(),
             root.Find("Btn_Quit")?.GetComponent<CanvasGroup>(),
         };
     }
